@@ -19,7 +19,11 @@
     .scroll-x{overflow:auto}
     .badge{font-size:.75rem; padding:.25rem .6rem; border-radius:999px; border:1px solid #cbd5e1; background:#fff;}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-    .small{font-size:.825rem}
+    .toast{position:fixed; right:16px; bottom:16px; background:#111827; color:#fff; padding:.75rem 1rem; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.2); opacity:0; transform:translateY(8px); transition:.25s;}
+    .toast.show{opacity:1; transform:translateY(0)}
+    .chip{display:inline-flex; align-items:center; gap:6px; font-size:.75rem; border:1px solid #cbd5e1; border-radius:999px; padding:.25rem .6rem;}
+    .muted{color:#64748b}
+    .hidden{display:none}
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -41,15 +45,15 @@
     </div>
     <div class="max-w-7xl mx-auto px-4 pb-3">
       <div class="tabs flex gap-2">
-        <button type="button" class="active" data-page="dashboard">Dashboard</button>
-        <button type="button" data-page="simulador">Simulador</button>
-        <button type="button" data-page="ir">Imposto de Renda</button>
+        <button type="button" class="active" data-target="page-dashboard">Dashboard</button>
+        <button type="button" data-target="page-simulador">Simulador</button>
+        <button type="button" data-target="page-ir">Imposto de Renda</button>
       </div>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-
+  <!-- DASHBOARD -->
+  <main id="page-dashboard" class="max-w-7xl mx-auto px-4 py-6 space-y-6">
     <!-- Config API + Diagnóstico -->
     <section class="card p-4" id="cfgApi">
       <div class="flex items-center justify-between mb-3">
@@ -78,7 +82,7 @@
     <section class="grid md:grid-cols-5 gap-3">
       <div class="card p-4"><div class="text-xs text-slate-500">Saldo Atual</div><div class="v" id="kpiSaldo">R$ 0,00</div><div class="text-[11px] text-slate-500">Caixa</div></div>
       <div class="card p-4"><div class="text-xs text-slate-500">Aportes no Mês</div><div class="v" id="kpiAporteMes">R$ 0,00</div><div class="text-[11px] text-slate-500">Último mês</div></div>
-      <div class="card p-4"><div class="text-xs text-slate-500">Rendimento no Mês</div><div class="v" id="kpiRendPerc">0,00%</div><div class="text-[11px] text-slate-500">% sobre Patrimônio</div></div>
+      <div class="card p-4"><div class="text-xs text-slate-500">Rendimento no Mês (%)</div><div class="v" id="kpiRendPerc">0,00%</div><div class="text-[11px] text-slate-500">cálculo simples</div></div>
       <div class="card p-4"><div class="text-xs text-slate-500">Prêmio no Ciclo</div><div class="v" id="kpiPremio">R$ 0,00</div><div class="text-[11px] text-slate-500">Soma</div></div>
       <div class="card p-4"><div class="text-xs text-slate-500">Resultado no Ciclo</div><div class="v" id="kpiResultado">R$ 0,00</div><div class="text-[11px] text-slate-500">Com encerramentos</div></div>
     </section>
@@ -104,22 +108,15 @@
       </div>
       <div class="card p-4">
         <h3 class="font-semibold mb-2">Ações Aportadas do Mês</h3>
-        <div id="boxAcoesMes" class="text-xs text-slate-500">Sem dados.</div>
+        <div id="boxAcoesMes" class="text-sm text-slate-700">Sem dados.</div>
       </div>
       <div class="card p-4">
         <h3 class="font-semibold mb-2">Opções Vendidas do Mês</h3>
-        <div id="boxOpcoesMes" class="text-xs text-slate-500">Sem dados.</div>
+        <div id="boxOpcoesMes" class="text-sm text-slate-700">Sem dados.</div>
       </div>
     </section>
 
-    <!-- Gráficos (placeholders) -->
-    <section class="grid md:grid-cols-3 gap-3">
-      <div class="card p-4 h-56"><h3 class="font-semibold">Evolução do Patrimônio</h3><div class="mt-2 text-xs text-slate-500">[gráfico]</div></div>
-      <div class="card p-4 h-56"><h3 class="font-semibold">Rendimento Mensal (%)</h3><div class="mt-2 text-xs text-slate-500">[gráfico]</div></div>
-      <div class="card p-4 h-56"><h3 class="font-semibold">Alocação</h3><div class="mt-2 text-xs text-slate-500">[gráfico]</div></div>
-    </section>
-
-    <!-- Tabelas -->
+    <!-- Carteira + Opções -->
     <section class="grid md:grid-cols-2 gap-3">
       <div class="card p-4">
         <div class="flex items-center justify-between">
@@ -143,9 +140,9 @@
         <div class="scroll-x mt-2">
           <table class="table">
             <thead><tr>
-              <th>Subjacente</th><th>Código</th><th>Qtde</th><th>Strike</th><th>Prêmio</th><th>Venc.</th><th>Status</th><th>Resultado</th>
+              <th>Subjacente</th><th>Código</th><th>Qtde</th><th>Strike</th><th>Prêmio</th><th>Venc.</th><th>Status</th><th>Resultado</th><th>Ação</th>
             </tr></thead>
-            <tbody id="tbOpcoes"><tr><td colspan="8" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+            <tbody id="tbOpcoes"><tr><td colspan="9" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -228,26 +225,52 @@
     </section>
   </main>
 
+  <!-- SIMULADOR -->
+  <main id="page-simulador" class="max-w-7xl mx-auto px-4 py-6 space-y-6 hidden">
+    <section class="card p-6">
+      <h2 class="text-lg font-semibold mb-2">Simulador</h2>
+      <p class="text-sm text-slate-600">(em construção) – defina aqui as regras de simulação que desejar que eu implemente.</p>
+    </section>
+  </main>
+
+  <!-- IR -->
+  <main id="page-ir" class="max-w-7xl mx-auto px-4 py-6 space-y-6 hidden">
+    <section class="card p-6">
+      <h2 class="text-lg font-semibold mb-2">Imposto de Renda</h2>
+      <p class="text-sm text-slate-600">(em construção) – se quiser, integro com o formulário de <b>IR (upsert)</b> que já existe no backend.</p>
+    </section>
+  </main>
+
+  <div id="toast" class="toast">ok</div>
+
   <script>
     // ===== Utils
     const qs = s => document.querySelector(s);
     const qsa = s => Array.from(document.querySelectorAll(s));
     const money = n => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(n||0));
     const pct   = n => (Number(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+    const BR = (iso) => { if(!iso) return ''; const d = new Date(iso); if(isNaN(d)) return iso; const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yy=d.getFullYear(); return `${dd}/${mm}/${yy}`; };
+    function toast(msg){ const t=qs('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 1600); }
 
-    // Bloqueio de submit/href em formulários (evita navegação indesejada):
+    // Tabs
+    qsa('.tabs button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        qsa('.tabs button').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        const id = btn.dataset.target;
+        qsa('main[id^="page-"]').forEach(m=> m.classList.add('hidden'));
+        qs('#'+id).classList.remove('hidden');
+      });
+    });
+
+    // Bloqueio de submit/href em formulários:
     document.addEventListener('submit', (e)=>{ e.preventDefault(); e.stopPropagation(); }, true);
-    document.addEventListener('click', (e)=>{
-      const a = e.target.closest('a[href]');
-      if (a && a.closest('form,.card')) { e.preventDefault(); e.stopPropagation(); }
-    }, true);
 
-    // ===== API cfg (FORÇANDO DEFAULT NA 1ª CARGA)
+    // ===== API cfg (força defaults na 1ª carga)
     const DEFAULT_URL="https://script.google.com/macros/s/AKfycbyRpqe93H1IFKWQuJ8Eu_f3SnZGKnWIXUvizy_iAhmHlm5IuQj0Sf388E-S5cEN_7BbJw/exec";
     const DEFAULT_KEY="Vc7@Rendimentos#2025!";
 
     function forceDefaultsOnce(){
-      // Se a URL salva não corresponde ao DEFAULT, vamos forçar defaults.
       const savedUrl = localStorage.getItem('api.url');
       if (!savedUrl || !savedUrl.includes("AKfycbyRpqe93H1I")) {
         localStorage.setItem('api.url', DEFAULT_URL);
@@ -262,18 +285,18 @@
     function saveApiConfig(){
       localStorage.setItem('api.url', qs('#apiUrl').value.trim());
       localStorage.setItem('api.key', qs('#apiKey').value.trim());
-      alert('Configuração salva.');
+      toast('Configuração salva.');
       diag(`WEB_APP_URL em uso: ${qs('#apiUrl').value}`);
     }
     function resetApiConfig(){
       localStorage.removeItem('api.url');
       localStorage.removeItem('api.key');
-      loadApiConfig(); // volta aos defaults
-      alert('Configuração resetada.');
+      loadApiConfig();
+      toast('Configuração resetada.');
     }
     function apiBase(){ return { url:qs('#apiUrl').value.trim(), key:qs('#apiKey').value.trim() }; }
 
-    // ===== Log de diagnóstico na UI
+    // ===== Log/Diag na UI
     function diag(msg){
       const box = qs('#diag');
       const now = new Date().toLocaleTimeString();
@@ -281,7 +304,7 @@
       console.log('[DIAG]', msg);
     }
 
-    // ===== API calls
+    // ===== API calls (POST sem pré-flight)
     async function apiGet(resource){
       const {url,key}=apiBase();
       diag('GET: ' + resource);
@@ -289,7 +312,7 @@
       const ct=r.headers.get('content-type')||'';
       if(!ct.includes('application/json')){
         const t=await r.text();
-        diag('GET não-JSON (ver implantação): ' + t.slice(0,120));
+        diag('GET não-JSON: ' + t.slice(0,120));
         throw new Error('GET não-JSON (publique o Web App como "Qualquer pessoa").');
       }
       const j=await r.json(); if(!j.ok) throw new Error(j.error||'Falha'); return j.data||[];
@@ -316,9 +339,23 @@
       const m=/^\s*(\d{2})[\/\-](\d{2})[\/\-](\d{4})\s*$/.exec(dmy||'');
       if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`;
     }
+    function inMonth(iso, y, m){
+      if(!iso) return false;
+      const d = new Date(iso);
+      if(isNaN(d)) return false;
+      return d.getFullYear()===y && (d.getMonth()+1)===m;
+    }
+
+    // ===== Renders (preenchendo apenas TBODY)
+    function renderAportes(rows){
+      const tb=qs('#tbCarteira'); // carteira ainda placeholder
+    }
+    function renderCompras(rows){
+      // sem carteira consolidada por enquanto
+    }
     function renderOpcoes(opcoes){
       const tb = qs('#tbOpcoes'); if(!tb) return;
-      if(!opcoes || !opcoes.length){ tb.innerHTML = `<tr><td colspan="8" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
+      if(!opcoes || !opcoes.length){ tb.innerHTML = `<tr><td colspan="9" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
       tb.innerHTML = opcoes.map(o => `
         <tr>
           <td>${o.subjacente ?? ''}</td>
@@ -326,11 +363,16 @@
           <td>${o.qtde ?? ''}</td>
           <td>${o.strike ?? ''}</td>
           <td>${o.premio ?? ''}</td>
-          <td>${o.vencimento ?? ''}</td>
+          <td>${BR(o.vencimento) || ''}</td>
           <td>${o.status ?? ''}</td>
           <td>${o.resultado ?? ''}</td>
+          <td><button data-cod="${o.codigo||''}" class="btn secondary text-xs btnEncerrar">Encerrar</button></td>
         </tr>
       `).join('');
+      qsa('.btnEncerrar').forEach(b=> b.addEventListener('click', onEncerrarClick));
+    }
+    function renderEncerr(rows){
+      // (mantém placeholder – preencher quando precisar)
     }
     function renderExtrato(mensal){
       const tb = qs('#tbExtrato'); if(!tb) return;
@@ -338,13 +380,16 @@
       tb.innerHTML = mensal.map(m => `
         <tr>
           <td>${String(m.mes).padStart(2,'0')}/${m.ano}</td>
-          <td>${(m['aporte']??0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
-          <td>${(m['rend_r$']??0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
-          <td>${(m['rend_%']??0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2})}%</td>
-          <td>${(m['patrimonio']??0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
+          <td>${money(m.aporte||0)}</td>
+          <td>${money(m['rend_r$']||0)}</td>
+          <td>${pct(m['rend_%']||0)}</td>
+          <td>${money(m.patrimonio||0)}</td>
         </tr>
-      `).join('');
+      }).join('');
     }
+
+    // ===== Dados globais (para cálculos)
+    let DATA = { aportes:[], compras:[], opcoes:[], encerr:[], mensal:[] };
 
     // ===== Dados + KPIs
     async function reloadAll(){
@@ -353,13 +398,40 @@
           apiGet('aportes'), apiGet('compras'), apiGet('opcoes'),
           apiGet('encerr'), apiGet('mensal')
         ]);
-        const aporteMes = (aportes||[]).reduce((s,a)=> s + Number(a.valor||0), 0);
+        DATA = { aportes, compras, opcoes, encerr, mensal };
+
+        // KPIs OK + cálculos pedido
+        const now = new Date();
+        const y = now.getFullYear(), m = now.getMonth()+1;
+
+        const aporteMes = (aportes||[]).filter(a=>inMonth(a.data, y, m))
+                                       .reduce((s,a)=> s + Number(a.valor||0), 0);
+        const premioMes = (opcoes||[]).filter(o=>inMonth(o.data_venda, y, m))
+                                      .reduce((s,o)=> s + Number(o.premio||0), 0);
+        const resultadoMes = (encerr||[]).filter(e=>inMonth(e.data_fechamento, y, m))
+                                         .reduce((s,e)=> s + Number(e.resultado||0), 0);
+
         qs('#kpiAporteMes').textContent = money(aporteMes);
-        qs('#kpiSaldo').textContent = money(aporteMes); // placeholder
-        qs('#kpiPremio').textContent = money((opcoes||[]).reduce((s,o)=> s + Number(o.premio||0),0));
-        qs('#kpiResultado').textContent = money((encerr||[]).reduce((s,e)=> s + Number(e.resultado||0),0));
-        qs('#kpiRendPerc').textContent = pct(0);
+        qs('#kpiPremio').textContent = money(premioMes);
+        qs('#kpiResultado').textContent = money(resultadoMes);
+        // Rendimento % simples (ajuste a fórmula se quiser)
+        const baseSimples = aporteMes + premioMes + (resultadoMes>0?resultadoMes:0) || 1;
+        const rendPerc = (resultadoMes/baseSimples)*100;
+        qs('#kpiRendPerc').textContent = pct(rendPerc);
+
+        // Ações Aportadas do Mês (mostrar valor aportado)
+        qs('#boxAcoesMes').textContent = aporteMes>0 ? `Valor aportado no mês: ${money(aporteMes)}` : 'Sem dados.';
+
+        // Opções vendidas do mês (visível)
+        const doMes = (opcoes||[]).filter(o=>inMonth(o.data_venda, y, m));
+        qs('#boxOpcoesMes').innerHTML = doMes.length
+          ? doMes.map(o=>`${o.codigo} • ${o.subjacente} • Prêmio ${money(o.premio)} • Venc. ${BR(o.vencimento)}`).join('<br>')
+          : 'Sem dados.';
+
+        // Tabelas
         renderOpcoes(opcoes);
+
+        // Extrato: render dados existentes (se houver)
         renderExtrato(mensal);
       }catch(err){
         diag('reloadAll falhou: ' + err.message);
@@ -367,7 +439,57 @@
       }
     }
 
-    // ===== Eventos UI
+    // ===== Encerrar Opção
+    async function onEncerrarClick(e){
+      e.preventDefault();
+      const cod = e.currentTarget.getAttribute('data-cod');
+      const data_fechamento = prompt('Data de fechamento (dd/mm/aaaa):'); if(!data_fechamento) return;
+      const preco_acao = Number(prompt('Preço da ação (R$):')||0);
+      const custo_fechar = Number(prompt('Custo para recomprar/encerrar (R$):')||0);
+      const taxas = Number(prompt('Taxas (R$):')||0);
+      const resultado = Number(prompt('Resultado líquido (R$):')||0);
+      const payload = { action:'encerrar/create', codigo: cod, data_fechamento: toISO(data_fechamento), preco_acao, custo_fechar, taxas, status_final:'Encerrada', resultado };
+      try{ await apiPost(payload); toast('Encerramento registrado.'); reloadAll(); } catch(err){ toast('Erro: '+err.message); }
+    }
+
+    // ===== Extrato Mensal (calcular + aplicar)
+    let ultimoCalculoMensal = null;
+    function calcularMensalLocal(ano, mes){
+      const aporte = (DATA.aportes||[]).filter(a=>inMonth(a.data, ano, mes))
+                        .reduce((s,a)=> s + Number(a.valor||0), 0);
+      const rendPremios = (DATA.opcoes||[]).filter(o=>inMonth(o.data_venda, ano, mes))
+                          .reduce((s,o)=> s + Number(o.premio||0), 0);
+      const resultados = (DATA.encerr||[]).filter(e=>inMonth(e.data_fechamento, ano, mes))
+                          .reduce((s,e)=> s + Number(e.resultado||0), 0);
+      const rend_r$ = rendPremios + resultados;
+      // Fórmula simples para % (ajuste se quiser)
+      const base = Math.max(1, aporte + rendPremios);
+      const rend_% = (rend_r$ / base) * 100;
+      const patrimonio = aporte + rend_r$; // placeholder (defina fórmula que preferir)
+
+      return { ano, mes, aporte, "rend_r$": rend_r$, "rend_%": rend_% , patrimonio };
+    }
+
+    qs('#btnBuscarExtrato').addEventListener('click', (e)=>{
+      e.preventDefault();
+      const ano = Number(qs('#exAno').value || new Date().getFullYear());
+      const mes = Number(qs('#exMes').value || (new Date().getMonth()+1));
+      ultimoCalculoMensal = calcularMensalLocal(ano, mes);
+      renderExtrato([ultimoCalculoMensal]);
+    });
+
+    qs('#btnAplicarExtrato').addEventListener('click', async (e)=>{
+      e.preventDefault();
+      if(!ultimoCalculoMensal){ toast('Clique em Buscar antes de Aplicar.'); return; }
+      const m = ultimoCalculoMensal;
+      try{
+        await apiPost({ action:'mensal/upsert', ano:m.ano, mes:m.mes, aporte:m.aporte, "rend_r$":m["rend_r$"], "rend_%":m["rend_%"], patrimonio:m.patrimonio });
+        toast('Mensal aplicado!');
+        reloadAll();
+      }catch(err){ toast('Erro: '+err.message); }
+    });
+
+    // ===== Eventos UI config
     qs('#btnSaveApi').addEventListener('click', (e)=>{ e.preventDefault(); saveApiConfig(); });
     qs('#btnResetApi').addEventListener('click', (e)=>{ e.preventDefault(); resetApiConfig(); });
     qs('#btnTestApi').addEventListener('click', async (e)=>{
@@ -382,7 +504,7 @@
       }
     });
 
-    // Aporte
+    // ===== Formulários (Aporte/Compra/Opção)
     qs('#btnAddAporte').addEventListener('click', async (e)=>{
       e.preventDefault();
       const data  = toISO(qs('#aporteData').value);
@@ -391,13 +513,11 @@
       if (!data || !valor){ alert('Informe data e valor.'); return; }
       try{
         await apiPost({ action:'aportes/create', data, valor, observacao: obs });
-        alert('Aporte salvo!');
-        qs('#aporteData').value=''; qs('#aporteValor').value=''; qs('#aporteObs').value='';
+        toast('Aporte salvo!'); ['#aporteData','#aporteValor','#aporteObs'].forEach(id=>qs(id).value='');
         reloadAll();
-      }catch(err){ diag('Aporte ERRO: '+err.message); alert('Erro ao salvar: '+err.message); }
+      }catch(err){ alert('Erro ao salvar: '+err.message); }
     });
 
-    // Compra
     qs('#btnAddCompra').addEventListener('click', async (e)=>{
       e.preventDefault();
       const ticker=qs('#compraTicker').value.trim();
@@ -407,13 +527,11 @@
       if(!ticker||!qtde||!preco||!data){ alert('Preencha todos os campos da compra.'); return; }
       try{
         await apiPost({ action:'compras/create', data, ticker, qtde, preco });
-        alert('Compra salva!');
-        ['#compraTicker','#compraPreco','#compraQtde','#compraData'].forEach(id=> qs(id).value='');
+        toast('Compra salva!'); ['#compraTicker','#compraPreco','#compraQtde','#compraData'].forEach(id=>qs(id).value='');
         reloadAll();
-      }catch(err){ diag('Compra ERRO: '+err.message); alert('Erro ao salvar: '+err.message); }
+      }catch(err){ alert('Erro ao salvar: '+err.message); }
     });
 
-    // Opções
     qs('#btnAddOpcao').addEventListener('click', async (e)=>{
       e.preventDefault();
       const sub=qs('#opSubj').value.trim(), cod=qs('#opCodigo').value.trim();
@@ -423,10 +541,9 @@
       if(!sub||!cod||!qtde||!strike||!premio||!dv||!venc){ alert('Preencha todos os campos da opção.'); return; }
       try{
         await apiPost({ action:'opcoes/create', data_venda:dv, vencimento:venc, subjacente:sub, codigo:cod, qtde, strike, premio, status:'Aberta', resultado:0 });
-        alert('Opção registrada!');
-        ['#opSubj','#opCodigo','#opQtde','#opStrike','#opPremio','#opDataVenda','#opVenc'].forEach(id=> qs(id).value='');
+        toast('Opção registrada!'); ['#opSubj','#opCodigo','#opQtde','#opStrike','#opPremio','#opDataVenda','#opVenc'].forEach(id=>qs(id).value='');
         reloadAll();
-      }catch(err){ diag('Opção ERRO: '+err.message); alert('Erro ao salvar: '+err.message); }
+      }catch(err){ alert('Erro ao salvar: '+err.message); }
     });
 
     // Ciclo – 3ª sexta
@@ -446,15 +563,13 @@
       e.preventDefault();
       const v=qs('#cicloVenc').textContent.trim();
       if(!/^\d{2}\/\d{2}\/\d{4}$/.test(v)){ alert('Calcule o vencimento primeiro.'); return; }
-      qs('#opVenc').value=v; alert('Vencimento aplicado no formulário de Opções.');
+      qs('#opVenc').value=v; toast('Vencimento aplicado no formulário de Opções.');
     });
 
-    // ===== Init (força defaults, carrega cfg e dados)
+    // ===== Init
     forceDefaultsOnce();
     loadApiConfig();
-    // Diagnóstico: mostra claramente qual URL está em uso
     diag('Iniciado. URL atual: ' + (qs('#apiUrl').value));
-    // Carrega dados iniciais
     reloadAll();
   </script>
 </body>
