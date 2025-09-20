@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Venda Coberta – Patrimônio, Aportes e Ciclo Mensal</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root{ --card-bg:#fff; --card-br:#e5e7eb; }
     .card{background:var(--card-bg); border:1px solid var(--card-br); border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.04);}
@@ -20,6 +21,7 @@
     .badge{font-size:.75rem; padding:.25rem .6rem; border-radius:999px; border:1px solid #cbd5e1; background:#fff;}
     .small{font-size:.85rem}
     .hidden{display:none}
+    canvas{width:100%!important;height:280px!important;}
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -69,9 +71,25 @@
     <section class="grid md:grid-cols-5 gap-3">
       <div class="card p-4"><div class="text-xs text-slate-500">Saldo Atual</div><div class="v" id="kpiSaldo">R$ 0,00</div><div class="text-[11px] text-slate-500">Caixa</div></div>
       <div class="card p-4"><div class="text-xs text-slate-500">Aportes no Mês</div><div class="v" id="kpiAporteMes">R$ 0,00</div><div class="text-[11px] text-slate-500">Somente mês/ano em referência</div></div>
-      <div class="card p-4"><div class="text-xs text-slate-500">Rendimento no Mês (%)</div><div class="v" id="kpiRendPerc">0,00%</div><div class="text-[11px] text-slate-500">cálculo simples</div></div>
+      <div class="card p-4"><div class="text-xs text-slate-500">Rendimento no Mês (%)</div><div class="v" id="kpiRendPerc">0,00%</div><div class="text-[11px] text-slate-500">cálculo: (Prêmios + Resultados) / (Aportes + Prêmios)</div></div>
       <div class="card p-4"><div class="text-xs text-slate-500">Prêmio no Ciclo</div><div class="v" id="kpiPremio">R$ 0,00</div><div class="text-[11px] text-slate-500">Somente mês/ano em referência</div></div>
-      <div class="card p-4"><div class="text-xs text-slate-500">Resultado no Ciclo</div><div class="v" id="kpiResultado">R$ 0,00</div><div class="text-[11px] text-slate-500">Com encerramentos do mês</div></div>
+      <div class="card p-4"><div class="text-xs text-slate-500">Resultado no Ciclo</div><div class="v" id="kpiResultado">R$ 0,00</div><div class="text-[11px] text-slate-500">Prêmios + Resultados (mês)</div></div>
+    </section>
+
+    <!-- Gráficos -->
+    <section class="grid md:grid-cols-3 gap-3">
+      <div class="card p-4">
+        <h3 class="font-semibold mb-2">Evolução do Patrimônio</h3>
+        <canvas id="chartPatrimonio"></canvas>
+      </div>
+      <div class="card p-4">
+        <h3 class="font-semibold mb-2">Aportes por Mês</h3>
+        <canvas id="chartAportes"></canvas>
+      </div>
+      <div class="card p-4">
+        <h3 class="font-semibold mb-2">Resultado do Ciclo (Prêmio + Resultado)</h3>
+        <canvas id="chartResultado"></canvas>
+      </div>
     </section>
 
     <!-- Cards de mês -->
@@ -241,7 +259,7 @@
       const j = await r.json(); if(!j.ok) throw new Error(j.error||'Falha POST'); return j.data;
     }
 
-    // ===== Renderizações
+    // ===== Renderizações simples
     function renderOpcoes(opcoes){
       const tb = qs('#tbOpcoes');
       if(!opcoes || !opcoes.length){ tb.innerHTML = `<tr><td colspan="8" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
@@ -274,12 +292,61 @@
     let DATA = { aportes:[], compras:[], opcoes:[], encerr:[], mensal:[] };
     let CTX = { ano:new Date().getFullYear(), mes:new Date().getMonth()+1 };
 
+    // ===== Gráficos
+    let charts = { patrimonio:null, aportes:null, resultado:null };
+    function destroyCharts(){ Object.values(charts).forEach(c=>{ if(c){ c.destroy(); } }); charts={patrimonio:null, aportes:null, resultado:null}; }
+
+    function monthKey(ano, mes){ return `${ano}-${String(mes).padStart(2,'0')}`; }
+    function buildMonthlyAggFromRaw(){
+      const map = new Map();
+      function add(key, field, v){ const o = map.get(key) || {ano:+key.split('-')[0], mes:+key.split('-')[1], aporte:0, premio:0, resultado:0}; o[field]+=Number(v||0); map.set(key,o); }
+      (DATA.aportes||[]).forEach(a=>{ const d=normalizeISO(a.data); if(d){ add(monthKey(d.getFullYear(), d.getMonth()+1), 'aporte', a.valor); } });
+      (DATA.opcoes||[]).forEach(o=>{ const d=normalizeISO(o.data_venda); if(d){ add(monthKey(d.getFullYear(), d.getMonth()+1), 'premio', o.premio); } });
+      (DATA.encerr||[]).forEach(e=>{ const d=normalizeISO(e.data_fechamento); if(d){ add(monthKey(d.getFullYear(), d.getMonth()+1), 'resultado', e.resultado); } });
+      const arr = Array.from(map.values()).sort((a,b)=> a.ano===b.ano ? a.mes-b.mes : a.ano-b.ano);
+      return arr.map(x=>({ ...x, rend_rs: x.premio + x.resultado, rend_pct: ((x.premio+x.resultado)/Math.max(1, x.aporte + x.premio))*100, patrimonio: x.aporte + x.premio + x.resultado }));
+    }
+    function buildMonthlyFromMensal(){
+      return (DATA.mensal||[]).map(m=>({ ano:+m.ano, mes:+m.mes, aporte:+(m.aporte||0), rend_rs:+(m['rend_r$']||0), rend_pct:+(m['rend_%']||0), patrimonio:+(m.patrimonio||0), premio:0, resultado:0 }))
+        .sort((a,b)=> a.ano===b.ano ? a.mes-b.mes : a.ano-b.ano);
+    }
+    function drawCharts(){
+      destroyCharts();
+      let rows = buildMonthlyFromMensal();
+      if(!rows.length) rows = buildMonthlyAggFromRaw();
+      if(!rows.length) return;
+
+      const labels = rows.map(r=> `${String(r.mes).padStart(2,'0')}/${r.ano}`);
+      const patrimonio = rows.reduce((acc,r)=>{ const last = acc.length? acc[acc.length-1] : 0; acc.push(last + (r.patrimonio || (r.aporte + r.rend_rs))); return acc; }, []);
+
+      // Patrimônio (linha cumulativa)
+      charts.patrimonio = new Chart(document.getElementById('chartPatrimonio').getContext('2d'),{
+        type:'line',
+        data:{ labels, datasets:[{ label:'Patrimônio (cumulativo)', data:patrimonio, borderWidth:2, fill:false }]},
+        options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
+      });
+
+      // Aportes por mês
+      charts.aportes = new Chart(document.getElementById('chartAportes').getContext('2d'),{
+        type:'bar',
+        data:{ labels, datasets:[{ label:'Aportes', data: rows.map(r=>r.aporte) }]},
+        options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
+      });
+
+      // Resultado do ciclo (Prêmio + Resultado)
+      charts.resultado = new Chart(document.getElementById('chartResultado').getContext('2d'),{
+        type:'bar',
+        data:{ labels, datasets:[{ label:'Resultado do Ciclo', data: rows.map(r=> (r.rend_rs ?? (r.premio + r.resultado))) } ]},
+        options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
+      });
+    }
+
     // UI Contexto
     function syncCtxToUI(){ qs('#ctxMes').value=String(CTX.mes); qs('#ctxAno').value=String(CTX.ano); }
     function syncUIToCtx(){ const m=Number(qs('#ctxMes').value||CTX.mes); const a=Number(qs('#ctxAno').value||CTX.ano); CTX={ano:a,mes:m}; }
     qs('#btnCtxAplicar').addEventListener('click', ()=>{ syncUIToCtx(); updateAllCalculations(); });
 
-    // ===== Cálculos por mês/ano
+    // ===== KPIs/Cartões por mês/ano
     function updateAllCalculations(){
       const {ano,mes}=CTX;
       const aportesMes = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes));
@@ -290,12 +357,16 @@
       const somaPremio = opcoesMes.reduce((s,o)=> s + Number(o.premio||0), 0);
       const somaResEnc = encerrMes.reduce((s,e)=> s + Number(e.resultado||0), 0);
 
+      // === mudanças pedidas:
+      const resultadoCiclo = somaPremio + somaResEnc; // agora mostra algo mesmo sem encerramento
+      const base = Math.max(1, somaAporte + somaPremio);
+      const rendimentoMesPct = (resultadoCiclo / base) * 100;
+
       // KPIs
       qs('#kpiAporteMes').textContent = money(somaAporte);
       qs('#kpiPremio').textContent    = money(somaPremio);
-      qs('#kpiResultado').textContent = money(somaResEnc);
-      const base = Math.max(1, somaAporte + somaPremio);
-      qs('#kpiRendPerc').textContent  = pct((somaResEnc/base)*100);
+      qs('#kpiResultado').textContent = money(resultadoCiclo);
+      qs('#kpiRendPerc').textContent  = pct(rendimentoMesPct);
       qs('#kpiSaldo').textContent     = money(somaAporte); // placeholder
 
       // Cards
@@ -304,10 +375,10 @@
         ? opcoesMes.map(o=>`${o.codigo} • ${o.subjacente} • Prêmio ${money(o.premio)} • Venc. ${BR(o.vencimento)}`).join('<br>')
         : 'Sem dados.';
 
-      // Atualiza “linha automática” do extrato para o mês/ano de referência
-      const calc = calcularMensalLocal(ano,mes);
+      // Linha calculada para o mês/ano de referência no extrato
+      const calc = { ano, mes, aporte:somaAporte, "rend_r$":resultadoCiclo, "rend_%":rendimentoMesPct, patrimonio:(somaAporte + resultadoCiclo) };
       const tb = qs('#tbExtrato');
-      const html = `
+      tb.innerHTML = `
         <tr>
           <td>${String(calc.mes).padStart(2,'0')}/${calc.ano}</td>
           <td>${money(calc.aporte)}</td>
@@ -315,10 +386,12 @@
           <td>${pct(calc["rend_%"])}</td>
           <td>${money(calc.patrimonio)}</td>
         </tr>`;
-      tb.innerHTML = html;
+
+      // Gráficos
+      drawCharts();
     }
 
-    // ===== Extrato (local + Aplicar)
+    // ===== Extrato (buscar/aplicar específicos)
     let ultimoCalc = null;
     function calcularMensalLocal(ano, mes){
       const aporte = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes)).reduce((s,a)=>s+Number(a.valor||0),0);
@@ -327,7 +400,7 @@
       const rend_rs = premios + resultados;
       const base = Math.max(1, aporte + premios);
       const rend_pct = (rend_rs/base)*100;
-      const patrimonio = aporte + rend_rs; // ajuste livre
+      const patrimonio = aporte + rend_rs;
       return {ano,mes,aporte, "rend_r$":rend_rs, "rend_%":rend_pct, patrimonio};
     }
     qs('#btnBuscarExtrato').addEventListener('click', ()=>{
@@ -397,8 +470,8 @@
 
     // Init
     (function init(){
-      syncCtxToUI();
-      qs('#exMes').value = String(CTX.mes); qs('#exAno').value = String(CTX.ano);
+      qs('#ctxMes').value = String(CTX.mes); qs('#ctxAno').value = String(CTX.ano);
+      qs('#exMes').value = String(CTX.mes);  qs('#exAno').value = String(CTX.ano);
       reloadAll();
     })();
   </script>
