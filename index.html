@@ -3,344 +3,468 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>💼 Controle – Venda Coberta</title>
+  <title>Venda Coberta – Patrimônio, Aportes e Ciclo Mensal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .card{border:1px solid #e2e8f0;border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);}
-    .input{border:1px solid #cbd5e1;border-radius:10px;padding:.6rem .8rem;width:100%;}
-    .btn{border:1px solid #0ea5e9;background:#0284c7;color:#fff;border-radius:10px;padding:.6rem 1rem;font-weight:600;}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .tab{cursor:pointer;padding:.5rem 1rem;border-radius:999px;border:1px solid #cbd5e1;background:#fff;}
-    .tab.active{background:#0284c7;border-color:#0284c7;color:#fff;}
-    .table th, .table td{border-bottom:1px solid #e2e8f0;padding:.55rem .6rem;text-align:left;white-space:nowrap}
-    .table{width:100%;overflow:auto}
+    :root{
+      --card-bg: #ffffff;
+      --card-br: #e5e7eb;
+    }
+    .card{background:var(--card-bg); border:1px solid var(--card-br); border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.04);}
+    .hl{border:1px dashed #cbd5e1}
+    .input{border:1px solid #cbd5e1; border-radius:10px; padding:.65rem .85rem; width:100%;}
+    .btn{border:1px solid #0ea5e9; background:#0284c7; color:#fff; border-radius:10px; padding:.6rem 1rem; font-weight:600;}
+    .btn.secondary{background:#fff; color:#0f172a; border-color:#cbd5e1;}
+    .badge{font-size:.75rem; padding:.25rem .6rem; border-radius:999px; border:1px solid #cbd5e1; background:#fff;}
+    .tabs button{padding:.45rem .9rem; border-radius:10px; border:1px solid #e5e7eb; background:#fff;}
+    .tabs .active{background:#0ea5e9; border-color:#0ea5e9; color:#fff;}
+    .kpi{display:flex; gap:.75rem; align-items:center;}
+    .kpi .v{font-size:1.15rem; font-weight:800;}
+    .table{width:100%;}
+    .table th,.table td{border-bottom:1px solid #e5e7eb; padding:.6rem .5rem; text-align:left; white-space:nowrap; font-size:.925rem;}
+    .scroll-x{overflow:auto}
+    .pill{border:1px solid #cbd5e1; border-radius:999px; padding:.35rem .7rem; background:#fff; font-size:.85rem;}
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
-  <header class="p-4 md:p-6 bg-white shadow flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <h1 class="text-xl md:text-2xl font-bold">💼 Controle – Venda Coberta</h1>
-      <span class="text-sm text-slate-500 hidden md:inline">Aportes, Compras, Opções, Encerramentos, IR</span>
+
+  <!-- Topbar -->
+  <header class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-full bg-slate-900 text-white grid place-items-center font-bold">B</div>
+        <div>
+          <div class="font-semibold">Venda Coberta – Patrimônio, Aportes e Ciclo Mensal</div>
+          <div class="text-xs text-slate-500">Conectado ao Google Apps Script</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" id="btnExportCsv" class="btn secondary text-xs">Exportar CSV</button>
+        <button type="button" id="btnConfigApi" class="btn secondary text-xs">Configurar API</button>
+      </div>
     </div>
-    <div class="flex items-center gap-3 text-sm">
-      <button id="btnReload" type="button" class="btn">Recarregar Listas</button>
+    <div class="max-w-7xl mx-auto px-4 pb-3">
+      <div class="tabs flex gap-2">
+        <button type="button" class="active" data-page="dashboard">Dashboard</button>
+        <button type="button" data-page="simulador">Simulador</button>
+        <button type="button" data-page="ir">Imposto de Renda</button>
+      </div>
     </div>
   </header>
 
-  <main class="p-4 md:p-6 space-y-6">
-    <!-- Config -->
-    <section class="card p-4 md:p-6">
-      <h2 class="text-lg font-semibold mb-3">Configuração do Endpoint</h2>
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <!-- Config API -->
+    <section class="card p-4" id="cfgApi">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold">Configuração da API (cole e salve)</h2>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btnSaveApi" class="btn">Salvar</button>
+        </div>
+      </div>
       <div class="grid md:grid-cols-2 gap-3">
         <div>
-          <label class="text-sm text-slate-600">API URL</label>
-          <input id="apiUrl" class="input" value="https://script.google.com/macros/s/AKfycbzpnjwbV6UnNTKTuO_1sabDMelgS__4dTV7oxd8WFltEssboPRb2RBQQJLXu5WuFOrKNQ/exec" />
+          <label class="text-xs text-slate-600">WEB_APP_URL</label>
+          <input id="apiUrl" class="input" value="https://script.google.com/macros/s/AKfycbzpnjwbV6UnNTKTuO_1sabDMelgS__4dTV7oxd8WFltEssboPRb2RBQQJLXu5WuFOrKNQ/exec">
         </div>
         <div>
-          <label class="text-sm text-slate-600">API KEY</label>
-          <input id="apiKey" class="input" value="Vc7@Rendimentos#2025!" />
+          <label class="text-xs text-slate-600">API_KEY</label>
+          <input id="apiKey" class="input" value="Vc7@Rendimentos#2025!">
         </div>
       </div>
-      <div class="mt-3 text-sm text-slate-500">Mantenha a URL e a KEY sincronizadas com o Apps Script (implantado como Web App – acesso: Anyone).</div>
+      <p class="mt-2 text-xs text-slate-500">Após publicar/atualizar o Web App, cole a URL e salve. A cada troca você pode mexer aqui sem reabrir a página.</p>
     </section>
 
-    <!-- Abas -->
-    <section class="card p-4 md:p-6">
-      <div class="flex flex-wrap gap-2 mb-4">
-        <button data-tab="aportes" type="button" class="tab active">Aportes</button>
-        <button data-tab="compras" type="button" class="tab">Compras</button>
-        <button data-tab="opcoes" type="button" class="tab">Opções</button>
-        <button data-tab="encerr" type="button" class="tab">Encerramentos</button>
-        <button data-tab="mensal" type="button" class="tab">Mensal</button>
-        <button data-tab="ir" type="button" class="tab">IR</button>
+    <!-- KPIs -->
+    <section class="grid md:grid-cols-5 gap-3">
+      <div class="card p-4 kpi"><div>
+        <div class="text-xs text-slate-500">Saldo Atual</div>
+        <div class="v" id="kpiSaldo">R$ 0,00</div>
+        <div class="text-[11px] text-slate-500">Caixa • Aportes + Ganhos - Custos</div>
+      </div></div>
+      <div class="card p-4 kpi"><div>
+        <div class="text-xs text-slate-500">Aportes no Mês</div>
+        <div class="v" id="kpiAporteMes">R$ 0,00</div>
+        <div class="text-[11px] text-slate-500">Último mês</div>
+      </div></div>
+      <div class="card p-4 kpi"><div>
+        <div class="text-xs text-slate-500">Rendimento no Mês</div>
+        <div class="v" id="kpiRendPerc">0,00%</div>
+        <div class="text-[11px] text-slate-500">% sobre Patrimônio</div>
+      </div></div>
+      <div class="card p-4 kpi"><div>
+        <div class="text-xs text-slate-500">Prêmio no Ciclo</div>
+        <div class="v" id="kpiPremio">R$ 0,00</div>
+        <div class="text-[11px] text-slate-500">Soma das vendas lançadas</div>
+      </div></div>
+      <div class="card p-4 kpi"><div>
+        <div class="text-xs text-slate-500">Resultado no Ciclo</div>
+        <div class="v" id="kpiResultado">R$ 0,00</div>
+        <div class="text-[11px] text-slate-500">Com ajustes/encerramentos</div>
+      </div></div>
+    </section>
+
+    <!-- Ciclo, Ações/Aportes, Opções do Mês -->
+    <section class="grid md:grid-cols-3 gap-3">
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Ciclo Mensal – 3ª Sexta-feira</h3>
+        </div>
+        <p class="text-xs text-slate-500 mb-3">Calcule o vencimento do mês e aplique no formulário.</p>
+        <div class="grid grid-cols-3 gap-2">
+          <select id="cicloMes" class="input">
+            <option value="01">janeiro</option><option value="02">fevereiro</option>
+            <option value="03">março</option><option value="04">abril</option>
+            <option value="05">maio</option><option value="06">junho</option>
+            <option value="07">julho</option><option value="08">agosto</option>
+            <option value="09">setembro</option><option value="10">outubro</option>
+            <option value="11">novembro</option><option value="12">dezembro</option>
+          </select>
+          <input id="cicloAno" class="input" type="number" placeholder="AAAA" />
+          <button id="btnCalcCiclo" type="button" class="btn">Calcular</button>
+        </div>
+        <div class="mt-3 text-sm">
+          <span class="pill">Vencimento: <span id="cicloVenc">–</span></span>
+          <button id="btnAplicarCiclo" type="button" class="btn secondary ml-2">Aplicar no formulário</button>
+        </div>
       </div>
-
-      <!-- LISTAS -->
-      <div id="listArea" class="space-y-6">
-        <div id="list-aportes"></div>
-        <div id="list-compras" class="hidden"></div>
-        <div id="list-opcoes" class="hidden"></div>
-        <div id="list-encerr" class="hidden"></div>
-        <div id="list-mensal" class="hidden"></div>
-        <div id="list-ir" class="hidden"></div>
+      <div class="card p-4">
+        <h3 class="font-semibold mb-2">Ações Aportadas do Mês</h3>
+        <div id="boxAcoesMes" class="text-xs text-slate-500">Sem dados.</div>
       </div>
-
-      <hr class="my-6" />
-
-      <!-- FORMULÁRIOS: INSERÇÃO RÁPIDA -->
-      <div id="formsArea" class="space-y-6">
-        <!-- Aportes -->
-        <form id="form-aportes" onsubmit="return false;">
-          <h3 class="font-semibold mb-2">Novo Aporte</h3>
-          <div class="grid md:grid-cols-4 gap-3">
-            <input id="ap_data" class="input" placeholder="Data (YYYY-MM-DD)" />
-            <input id="ap_valor" class="input" type="number" step="0.01" placeholder="Valor" />
-            <input id="ap_obs" class="input" placeholder="Observação" />
-            <button id="ap_submit" type="button" class="btn">Adicionar</button>
-          </div>
-        </form>
-
-        <!-- Compras -->
-        <form id="form-compras" class="hidden" onsubmit="return false;">
-          <h3 class="font-semibold mb-2">Nova Compra</h3>
-          <div class="grid md:grid-cols-6 gap-3">
-            <input id="co_data" class="input" placeholder="Data (YYYY-MM-DD)" />
-            <input id="co_ticker" class="input" placeholder="Ticker" />
-            <input id="co_qtde" class="input" type="number" step="1" placeholder="Qtde" />
-            <input id="co_preco" class="input" type="number" step="0.01" placeholder="Preço" />
-            <div class="md:col-span-1"></div>
-            <button id="co_submit" type="button" class="btn md:col-span-1">Adicionar</button>
-          </div>
-        </form>
-
-        <!-- Opções -->
-        <form id="form-opcoes" class="hidden" onsubmit="return false;">
-          <h3 class="font-semibold mb-2">Nova Venda de Opção</h3>
-          <div class="grid md:grid-cols-6 gap-3">
-            <input id="op_data_venda" class="input" placeholder="Data venda (YYYY-MM-DD)" />
-            <input id="op_venc" class="input" placeholder="Vencimento (YYYY-MM-DD)" />
-            <input id="op_subj" class="input" placeholder="Subjacente (ex: PETR4)" />
-            <input id="op_codigo" class="input" placeholder="Código (ex: PETRA30)" />
-            <input id="op_qtde" class="input" type="number" step="1" placeholder="Qtde" />
-            <input id="op_strike" class="input" type="number" step="0.01" placeholder="Strike" />
-            <input id="op_premio" class="input" type="number" step="0.01" placeholder="Prêmio R$" />
-            <button id="op_submit" type="button" class="btn md:col-span-1">Adicionar</button>
-          </div>
-        </form>
-
-        <!-- Encerramentos -->
-        <form id="form-encerr" class="hidden" onsubmit="return false;">
-          <h3 class="font-semibold mb-2">Novo Encerramento</h3>
-          <div class="grid md:grid-cols-6 gap-3">
-            <input id="en_codigo" class="input" placeholder="Código Opção" />
-            <input id="en_data" class="input" placeholder="Data fechamento (YYYY-MM-DD)" />
-            <input id="en_preco" class="input" type="number" step="0.01" placeholder="Preço Ação" />
-            <input id="en_custo" class="input" type="number" step="0.01" placeholder="Custo Fechar" />
-            <input id="en_taxas" class="input" type="number" step="0.01" placeholder="Taxas" />
-            <input id="en_result" class="input" type="number" step="0.01" placeholder="Resultado R$" />
-            <button id="en_submit" type="button" class="btn md:col-span-1">Adicionar</button>
-          </div>
-        </form>
-
-        <!-- Mensal -->
-        <form id="form-mensal" class="hidden" onsubmit="return false;">
-          <h3 class="font-semibold mb-2">Mensal (Upsert)</h3>
-          <div class="grid md:grid-cols-6 gap-3">
-            <input id="me_ano" class="input" type="number" placeholder="Ano (ex: 2025)" />
-            <input id="me_mes" class="input" type="number" placeholder="Mês (1-12)" />
-            <input id="me_aporte" class="input" type="number" step="0.01" placeholder="Aporte" />
-            <input id="me_rendr" class="input" type="number" step="0.01" placeholder="Rend R$" />
-            <input id="me_rendp" class="input" type="number" step="0.01" placeholder="Rend %" />
-            <input id="me_patr" class="input" type="number" step="0.01" placeholder="Patrimônio" />
-            <button id="me_submit" type="button" class="btn md:col-span-1">Salvar</button>
-          </div>
-        </form>
-
-        <!-- IR -->
-        <form id="form-ir" class="hidden" onsubmit="return false;">
-          <h3 class="font-semibold mb-2">IR (Upsert)</h3>
-          <div class="grid md:grid-cols-6 gap-3">
-            <input id="ir_comp" class="input" placeholder="Competência (YYYY-MM)" />
-            <input id="ir_regime" class="input" placeholder="Regime (ex: Carnê-Leão/Ajuste)" />
-            <input id="ir_aliq" class="input" type="number" step="0.01" placeholder="Alíquota %" />
-            <input id="ir_premios" class="input" type="number" step="0.01" placeholder="Prêmios" />
-            <input id="ir_result" class="input" type="number" step="0.01" placeholder="Resultados" />
-            <input id="ir_preju" class="input" type="number" step="0.01" placeholder="Prejuízo Comp." />
-            <input id="ir_retido" class="input" type="number" step="0.01" placeholder="IR Retido" />
-            <input id="ir_darf" class="input" placeholder="DARF nº" />
-            <input id="ir_pago" class="input" placeholder="Pago em (YYYY-MM-DD)" />
-            <input id="ir_obs" class="input" placeholder="Obs" />
-            <button id="ir_submit" type="button" class="btn md:col-span-1">Salvar</button>
-          </div>
-        </form>
+      <div class="card p-4">
+        <h3 class="font-semibold mb-2">Opções Vendidas do Mês</h3>
+        <div id="boxOpcoesMes" class="text-xs text-slate-500">Sem dados.</div>
       </div>
+    </section>
+
+    <!-- Gráficos -->
+    <section class="grid md:grid-cols-3 gap-3">
+      <div class="card p-4 h-56"><h3 class="font-semibold">Evolução do Patrimônio</h3><div class="mt-2 text-xs text-slate-500">[gráfico]</div></div>
+      <div class="card p-4 h-56"><h3 class="font-semibold">Rendimento Mensal (%)</h3><div class="mt-2 text-xs text-slate-500">[gráfico]</div></div>
+      <div class="card p-4 h-56"><h3 class="font-semibold">Alocação</h3><div class="mt-2 text-xs text-slate-500">[gráfico]</div></div>
+    </section>
+
+    <!-- Carteira + Opções -->
+    <section class="grid md:grid-cols-2 gap-3">
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Carteira</h3>
+          <div class="text-xs text-slate-500">Preço médio, VM, P% Livre</div>
+        </div>
+        <div class="scroll-x mt-2">
+          <table class="table">
+            <thead><tr>
+              <th>Ticker</th><th>Qtde</th><th>Preço Médio</th><th>Preço Atual</th><th>VM</th><th>Livre</th>
+            </tr></thead>
+            <tbody id="tbCarteira"><tr><td colspan="6" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Opções Cobertas</h3>
+          <div class="text-xs text-slate-500">Abertas • Encerradas • Encalhe</div>
+        </div>
+        <div class="scroll-x mt-2">
+          <table class="table">
+            <thead><tr>
+              <th>Subjacente</th><th>Código</th><th>Qtde</th><th>Strike</th><th>Prêmio</th><th>Venc.</th><th>Status</th><th>Resultado</th><th>Ação</th>
+            </tr></thead>
+            <tbody id="tbOpcoes"><tr><td colspan="9" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Extrato Mensal -->
+    <section class="card p-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold">Extrato Mensal</h3>
+        <button type="button" id="btnToggleExtrato" class="btn secondary text-xs">▼</button>
+      </div>
+      <p class="text-xs text-slate-500">Aportes (R$), Rendimentos (R$ e %), Patrimônio no fim do mês.</p>
+      <div class="mt-3 grid md:grid-cols-4 gap-2">
+        <select id="exMes" class="input">
+          <option value="1">jan</option><option value="2">fev</option><option value="3">mar</option><option value="4">abr</option>
+          <option value="5">mai</option><option value="6">jun</option><option value="7">jul</option><option value="8">ago</option>
+          <option value="9">set</option><option value="10">out</option><option value="11">nov</option><option value="12">dez</option>
+        </select>
+        <input id="exAno" class="input" type="number" placeholder="AAAA" />
+        <button type="button" id="btnBuscarExtrato" class="btn">Buscar</button>
+        <button type="button" id="btnAplicarExtrato" class="btn secondary">Aplicar</button>
+      </div>
+      <div class="scroll-x mt-3">
+        <table class="table">
+          <thead><tr><th>Mês</th><th>Aporte</th><th>Rend. (R$)</th><th>Rend. (%)</th><th>Patrimônio</th></tr></thead>
+          <tbody id="tbExtrato"><tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Formulários -->
+    <section class="grid md:grid-cols-3 gap-3">
+      <!-- Aporte -->
+      <form id="formAporte" class="card p-4" onsubmit="return false;">
+        <h3 class="font-semibold">Registrar Aporte</h3>
+        <div class="mt-2 grid gap-2">
+          <input id="aporteData" class="input" placeholder="dd/mm/aaaa">
+          <input id="aporteValor" class="input" type="number" step="0.01" placeholder="R$">
+          <input id="aporteObs" class="input" placeholder="Observação">
+          <button id="btnAddAporte" type="button" class="btn">Adicionar</button>
+        </div>
+      </form>
+
+      <!-- Compra -->
+      <form id="formCompra" class="card p-4" onsubmit="return false;">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Comprar Ação</h3>
+          <span class="badge">Carteira</span>
+        </div>
+        <div class="mt-2 grid gap-2">
+          <input id="compraTicker" class="input" placeholder="Ticker (ex: PCAR3)">
+          <input id="compraPreco" class="input" type="number" step="0.01" placeholder="Preço (R$)">
+          <input id="compraQtde" class="input" type="number" step="1" placeholder="Qtde">
+          <input id="compraData" class="input" placeholder="dd/mm/aaaa">
+          <button id="btnAddCompra" type="button" class="btn">Adicionar</button>
+        </div>
+      </form>
+
+      <!-- Vender Call Coberta -->
+      <form id="formOpcao" class="card p-4" onsubmit="return false;">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Vender Call Coberta</h3>
+          <span class="badge">Opções</span>
+        </div>
+        <div class="mt-2 grid gap-2">
+          <input id="opSubj" class="input" placeholder="Subjacente (ex: PETR4)">
+          <input id="opCodigo" class="input" placeholder="Código (ex: PETRA30)">
+          <div class="grid grid-cols-2 gap-2">
+            <input id="opQtde" class="input" type="number" step="1" placeholder="Qtde">
+            <input id="opStrike" class="input" type="number" step="0.01" placeholder="Strike (R$)">
+          </div>
+          <input id="opPremio" class="input" type="number" step="0.01" placeholder="Prêmio (R$)">
+          <div class="grid grid-cols-2 gap-2">
+            <input id="opDataVenda" class="input" placeholder="Data Venda (dd/mm/aaaa)">
+            <input id="opVenc" class="input" placeholder="Vencimento (dd/mm/aaaa)">
+          </div>
+          <button id="btnAddOpcao" type="button" class="btn">Registrar</button>
+        </div>
+      </form>
     </section>
   </main>
 
   <script>
-    const qs = sel => document.querySelector(sel);
-    const qsa = sel => Array.from(document.querySelectorAll(sel));
+    // ===== Util =====
+    const qs  = s => document.querySelector(s);
+    const qsa = s => Array.from(document.querySelectorAll(s));
+    const money = (n) => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(n||0));
+    const pct   = (n) => (Number(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
 
-    function apiBase() {
-      return { url: qs('#apiUrl').value.trim(), key: qs('#apiKey').value.trim() };
+    // ===== Config API (com localStorage) =====
+    const DEFAULT_URL = "https://script.google.com/macros/s/AKfycbzpnjwbV6UnNTKTuO_1sabDMelgS__4dTV7oxd8WFltEssboPRb2RBQQJLXu5WuFOrKNQ/exec";
+    const DEFAULT_KEY = "Vc7@Rendimentos#2025!";
+
+    function loadApiConfig(){
+      const u = localStorage.getItem('api.url') || DEFAULT_URL;
+      const k = localStorage.getItem('api.key') || DEFAULT_KEY;
+      qs('#apiUrl').value = u;
+      qs('#apiKey').value = k;
+    }
+    function saveApiConfig(){
+      localStorage.setItem('api.url', qs('#apiUrl').value.trim());
+      localStorage.setItem('api.key', qs('#apiKey').value.trim());
+      alert('Configuração salva.');
+    }
+    function apiBase(){
+      return {
+        url: (qs('#apiUrl').value || '').trim(),
+        key: (qs('#apiKey').value || '').trim()
+      }
     }
 
     async function apiGet(resource){
       const { url, key } = apiBase();
-      const resp = await fetch(`${url}?resource=${encodeURIComponent(resource)}&key=${encodeURIComponent(key)}`);
-      return resp.json();
+      const r = await fetch(`${url}?resource=${encodeURIComponent(resource)}&key=${encodeURIComponent(key)}`);
+      const ct = r.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) throw new Error('Resposta não-JSON (verifique permissões do Web App).');
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Falha');
+      return j.data || [];
     }
 
-    async function apiPost(payload){
+    async function apiPost(body){
       const { url, key } = apiBase();
-      const resp = await fetch(url, {
+      const r = await fetch(url, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(Object.assign({ key }, payload))
+        body: JSON.stringify(Object.assign({ key }, body))
       });
-      return resp.json();
+      const ct = r.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) throw new Error('Resposta não-JSON (verifique permissões do Web App).');
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Falha');
+      return j.data;
     }
 
+    // ===== Navegação básica =====
+    qsa('header .tabs button').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        qsa('header .tabs button').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        // (nesta versão, o conteúdo é único "dashboard")
+      });
+    });
+
+    // ===== Bloqueios de submit / href em formulários =====
+    document.addEventListener('submit', (e)=>{ e.preventDefault(); e.stopPropagation(); }, true);
+    document.addEventListener('click', (e)=>{
+      const a = e.target.closest('a[href]');
+      if (a && a.closest('form, .card')) { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+
+    // ===== Conversor de data dd/mm/aaaa -> yyyy-mm-dd =====
+    function toISO(dmy){
+      const m = /^\s*(\d{2})[\/\-](\d{2})[\/\-](\d{4})\s*$/.exec(dmy||'');
+      if (!m) return dmy;
+      const [_, dd, mm, yyyy] = m;
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    // ===== Render helpers =====
     function renderTable(el, rows){
-      if (!rows || !rows.length){ el.innerHTML = '<div class="text-sm text-slate-500">Sem registros.</div>'; return; }
+      if (!rows || !rows.length){
+        el.innerHTML = `<tr><td colspan="99" class="text-slate-500 text-sm">Sem dados.</td></tr>`;
+        return;
+      }
       const headers = Object.keys(rows[0]);
-      const thead = '<thead><tr>' + headers.map(h=>`<th class="text-xs uppercase text-slate-500">${h}</th>`).join('') + '</tr></thead>';
-      const tbody = '<tbody>' + rows.map(r=>{
-        return '<tr>' + headers.map(h=>`<td class="text-sm">${r[h] ?? ''}</td>`).join('') + '</tr>';
-      }).join('') + '</tbody>';
-      el.innerHTML = `<div class="overflow-auto"><table class="table">${thead}${tbody}</table></div>`;
+      const thead = '<thead><tr>'+headers.map(h=>`<th class="text-xs uppercase text-slate-500">${h}</th>`).join('')+'</tr></thead>';
+      const tbody = '<tbody>'+rows.map(r=>('<tr>'+headers.map(h=>`<td>${r[h] ?? ''}</td>`).join('')+'</tr>')).join('')+'</tbody>';
+      el.parentElement.innerHTML = `<table class="table">${thead}${tbody}</table>`;
     }
 
-    async function loadAll(){
-      qs('#btnReload').disabled = true;
+    // ===== Dashboard load (Aportes, Compras, Opções) =====
+    async function reloadAll(){
       try{
-        const [ap, co, op, en, me, ir] = await Promise.all([
+        const [aportes, compras, opcoes, encerr, mensal, ir] = await Promise.all([
           apiGet('aportes'), apiGet('compras'), apiGet('opcoes'),
           apiGet('encerr'), apiGet('mensal'), apiGet('ir')
         ]);
-        renderTable(qs('#list-aportes'), ap.data || []);
-        renderTable(qs('#list-compras'), co.data || []);
-        renderTable(qs('#list-opcoes'),  op.data || []);
-        renderTable(qs('#list-encerr'),  en.data || []);
-        renderTable(qs('#list-mensal'),  me.data || []);
-        renderTable(qs('#list-ir'),      ir.data || []);
-      } catch(ex){
-        alert('Falha ao carregar: ' + ex.message);
-      } finally {
-        qs('#btnReload').disabled = false;
+
+        // KPIs básicos (mock simples; ajuste conforme sua regra)
+        const aporteMes = (aportes||[]).reduce((s,a)=> s + Number(a.valor||0), 0);
+        qs('#kpiAporteMes').textContent = money(aporteMes);
+        qs('#kpiSaldo').textContent = money(aporteMes); // ajuste: saldo real = formula do seu sistema
+        qs('#kpiRendPerc').textContent = pct(0);
+        qs('#kpiPremio').textContent = money((opcoes||[]).reduce((s,o)=> s + Number(o.premio||0),0));
+        qs('#kpiResultado').textContent = money((encerr||[]).reduce((s,e)=> s + Number(e.resultado||0),0));
+
+        // Tabelas
+        const opTbody = document.createElement('tbody');
+        opTbody.id = 'tbOpcoes';
+        renderTable(opTbody, opcoes);
+        // substitui tbody atual
+        const opTable = document.querySelector('#tbOpcoes').closest('table');
+        opTable.replaceWith(opTable.cloneNode(false));
+        opTable.outerHTML = `<table class="table">${opTable.querySelector('thead')?.outerHTML||'<thead></thead>'}${opTbody.outerHTML}</table>`;
+
+        // Extrato mensal
+        const exTbody = document.createElement('tbody'); exTbody.id='tbExtrato';
+        renderTable(exTbody, mensal);
+        const exTable = document.querySelector('#tbExtrato').closest('table');
+        exTable.replaceWith(exTable.cloneNode(false));
+        exTable.outerHTML = `<table class="table">${exTable.querySelector('thead')?.outerHTML||'<thead></thead>'}${exTbody.outerHTML}</table>`;
+
+      } catch(err){
+        console.error(err);
+        alert('Falha ao carregar dados: ' + err.message);
       }
     }
 
-    // Tabs
-    qsa('.tab').forEach(btn=>{
-      btn.addEventListener('click', (ev)=>{
-        ev.preventDefault();
-        qsa('.tab').forEach(b=>b.classList.remove('active'));
-        btn.classList.add('active');
-        const tab = btn.dataset.tab;
-        // listas
-        qsa('#listArea > div').forEach(div=>div.classList.add('hidden'));
-        qs('#list-'+tab).classList.remove('hidden');
-        // forms
-        qsa('#formsArea > form').forEach(div=>div.classList.add('hidden'));
-        const formId = 'form-'+tab;
-        if (qs('#'+formId)) qs('#'+formId).classList.remove('hidden');
-      });
+    // ===== Ações: salvar itens =====
+    qs('#btnSaveApi').addEventListener('click', (e)=>{ e.preventDefault(); saveApiConfig(); });
+
+    qs('#btnAddAporte').addEventListener('click', async (e)=>{
+      e.preventDefault();
+      const data  = toISO(qs('#aporteData').value);
+      const valor = Number(qs('#aporteValor').value || 0);
+      const obs   = qs('#aporteObs').value || '';
+      if (!data || !valor){ alert('Informe data e valor.'); return; }
+      await apiPost({ action:'aportes/create', data, valor, observacao: obs });
+      alert('Aporte salvo!');
+      qs('#aporteData').value=''; qs('#aporteValor').value=''; qs('#aporteObs').value='';
+      reloadAll();
     });
 
-    // Helper para clique seguro (sempre previne submit)
-    const safeClick = (sel, handler) => {
-      const el = qs(sel);
-      if (!el) return;
-      el.addEventListener('click', async (e)=>{
-        e.preventDefault();
-        try { await handler(); } catch(err){ alert(err.message || 'Erro'); }
-      });
-    };
-
-    // Submits
-    safeClick('#ap_submit', async ()=>{
-      const payload = {
-        action:'aportes/create',
-        data: qs('#ap_data').value,
-        valor: Number(qs('#ap_valor').value || 0),
-        observacao: qs('#ap_obs').value
-      };
-      const res = await apiPost(payload);
-      if (!res.ok) throw new Error(res.error||'Erro ao salvar aporte');
-      await loadAll();
-      qs('#ap_data').value = ''; qs('#ap_valor').value = ''; qs('#ap_obs').value = '';
+    qs('#btnAddCompra').addEventListener('click', async (e)=>{
+      e.preventDefault();
+      const ticker = qs('#compraTicker').value.trim();
+      const preco  = Number(qs('#compraPreco').value || 0);
+      const qtde   = Number(qs('#compraQtde').value || 0);
+      const data   = toISO(qs('#compraData').value);
+      if (!ticker || !qtde || !preco || !data){ alert('Preencha todos os campos da compra.'); return; }
+      await apiPost({ action:'compras/create', data, ticker, qtde, preco });
+      alert('Compra salva!');
+      ['#compraTicker','#compraPreco','#compraQtde','#compraData'].forEach(id=> qs(id).value='');
+      reloadAll();
     });
 
-    safeClick('#co_submit', async ()=>{
-      const payload = {
-        action:'compras/create',
-        data: qs('#co_data').value,
-        ticker: qs('#co_ticker').value,
-        qtde: Number(qs('#co_qtde').value||0),
-        preco: Number(qs('#co_preco').value||0)
-      };
-      const res = await apiPost(payload);
-      if (!res.ok) throw new Error(res.error||'Erro ao salvar compra');
-      await loadAll();
-      ['#co_data','#co_ticker','#co_qtde','#co_preco'].forEach(id=>qs(id).value='');
-    });
-
-    safeClick('#op_submit', async ()=>{
-      const payload = {
+    qs('#btnAddOpcao').addEventListener('click', async (e)=>{
+      e.preventDefault();
+      const sub   = qs('#opSubj').value.trim();
+      const cod   = qs('#opCodigo').value.trim();
+      const qtde  = Number(qs('#opQtde').value || 0);
+      const strike= Number(qs('#opStrike').value || 0);
+      const premio= Number(qs('#opPremio').value || 0);
+      const dv    = toISO(qs('#opDataVenda').value);
+      const venc  = toISO(qs('#opVenc').value);
+      if (!sub || !cod || !qtde || !strike || !premio || !dv || !venc){ alert('Preencha todos os campos da opção.'); return; }
+      await apiPost({
         action:'opcoes/create',
-        data_venda: qs('#op_data_venda').value,
-        vencimento: qs('#op_venc').value,
-        subjacente: qs('#op_subj').value,
-        codigo: qs('#op_codigo').value,
-        qtde: Number(qs('#op_qtde').value||0),
-        strike: Number(qs('#op_strike').value||0),
-        premio: Number(qs('#op_premio').value||0),
-        status: 'Aberta',
-        resultado: 0
-      };
-      const res = await apiPost(payload);
-      if (!res.ok) throw new Error(res.error||'Erro ao salvar opção');
-      await loadAll();
-      ['#op_data_venda','#op_venc','#op_subj','#op_codigo','#op_qtde','#op_strike','#op_premio']
-        .forEach(id=>qs(id).value='');
+        data_venda: dv, vencimento: venc, subjacente: sub, codigo: cod,
+        qtde, strike, premio, status:'Aberta', resultado:0
+      });
+      alert('Opção registrada!');
+      ['#opSubj','#opCodigo','#opQtde','#opStrike','#opPremio','#opDataVenda','#opVenc'].forEach(id=> qs(id).value='');
+      reloadAll();
     });
 
-    safeClick('#en_submit', async ()=>{
-      const payload = {
-        action:'encerrar/create',
-        codigo: qs('#en_codigo').value,
-        data_fechamento: qs('#en_data').value,
-        preco_acao: Number(qs('#en_preco').value||0),
-        custo_fechar: Number(qs('#en_custo').value||0),
-        taxas: Number(qs('#en_taxas').value||0),
-        status_final: 'Encerrada',
-        resultado: Number(qs('#en_result').value||0),
-      };
-      const res = await apiPost(payload);
-      if (!res.ok) throw new Error(res.error||'Erro ao salvar encerramento');
-      await loadAll();
-      ['#en_codigo','#en_data','#en_preco','#en_custo','#en_taxas','#en_result'].forEach(id=>qs(id).value='');
+    // ===== Ciclo Mensal (3ª sexta-feira) =====
+    function terceiraSexta(ano, mes){
+      // mes: 1..12
+      const d = new Date(ano, mes-1, 1);
+      let sextas = [];
+      while (d.getMonth() === mes-1){
+        if (d.getDay() === 5) sextas.push(new Date(d));
+        d.setDate(d.getDate()+1);
+      }
+      return sextas[2] || sextas[1] || sextas[0];
+    }
+    qs('#btnCalcCiclo').addEventListener('click', (e)=>{
+      e.preventDefault();
+      const mes = Number(qs('#cicloMes').value || '1');
+      const ano = Number(qs('#cicloAno').value || new Date().getFullYear());
+      const dt = terceiraSexta(ano, mes);
+      if (!dt){ qs('#cicloVenc').textContent = '–'; return; }
+      const dd = String(dt.getDate()).padStart(2,'0');
+      const mm = String(dt.getMonth()+1).padStart(2,'0');
+      const yyyy = dt.getFullYear();
+      qs('#cicloVenc').textContent = `${dd}/${mm}/${yyyy}`;
+    });
+    qs('#btnAplicarCiclo').addEventListener('click', (e)=>{
+      e.preventDefault();
+      const v = qs('#cicloVenc').textContent.trim();
+      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(v)) { alert('Calcule o vencimento primeiro.'); return; }
+      qs('#opVenc').value = v;
+      alert('Vencimento aplicado no formulário de Opções.');
     });
 
-    safeClick('#me_submit', async ()=>{
-      const payload = {
-        action:'mensal/upsert',
-        ano: Number(qs('#me_ano').value||0),
-        mes: Number(qs('#me_mes').value||0),
-        aporte: Number(qs('#me_aporte').value||0),
-        "rend_r$": Number(qs('#me_rendr').value||0),
-        "rend_%": Number(qs('#me_rendp').value||0),
-        patrimonio: Number(qs('#me_patr').value||0)
-      };
-      const res = await apiPost(payload);
-      if (!res.ok) throw new Error(res.error||'Erro ao salvar mensal');
-      await loadAll();
-    });
+    // ===== Extrato (placeholders) =====
+    qs('#btnBuscarExtrato').addEventListener('click', (e)=>{ e.preventDefault(); alert('Filtro de extrato aplicado (mock).'); });
+    qs('#btnAplicarExtrato').addEventListener('click', (e)=>{ e.preventDefault(); alert('Valores aplicados (mock).'); });
 
-    safeClick('#ir_submit', async ()=>{
-      const payload = {
-        action:'ir/upsert',
-        competencia: qs('#ir_comp').value,
-        regime: qs('#ir_regime').value,
-        aliquota: Number(qs('#ir_aliq').value||0),
-        premios: Number(qs('#ir_premios').value||0),
-        resultados: Number(qs('#ir_result').value||0),
-        prejuizo_comp: Number(qs('#ir_preju').value||0),
-        ir_retido: Number(qs('#ir_retido').value||0),
-        darf: qs('#ir_darf').value,
-        pago_em: qs('#ir_pago').value,
-        obs: qs('#ir_obs').value
-      };
-      const res = await apiPost(payload);
-      if (!res.ok) throw new Error(res.error||'Erro ao salvar IR');
-      await loadAll();
-    });
-
-    qs('#btnReload').addEventListener('click', (e)=>{ e.preventDefault(); loadAll(); });
-
-    // init
-    loadAll();
+    // ===== Init =====
+    loadApiConfig();
+    reloadAll();
   </script>
 </body>
 </html>
