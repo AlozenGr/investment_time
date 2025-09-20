@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Venda Coberta – Patrimônio, Aportes e Ciclo Mensal</title>
+  <title>Venda Coberta – Painel</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -33,7 +33,7 @@
       <div class="flex items-center gap-3">
         <div class="h-9 w-9 rounded-full bg-slate-900 text-white grid place-items-center font-bold">B</div>
         <div>
-          <div class="font-semibold">Venda Coberta – Patrimônio, Aportes e Ciclo Mensal</div>
+          <div class="font-semibold">Venda Coberta – Painel</div>
           <div class="text-xs text-slate-500">Conectado ao Google Apps Script</div>
         </div>
       </div>
@@ -44,7 +44,6 @@
     <div class="max-w-7xl mx-auto px-4 pb-3">
       <div class="tabs flex gap-2">
         <button type="button" class="active" data-page="dashboard">Dashboard</button>
-        <button type="button" data-page="simulador">Simulador</button>
         <button type="button" data-page="ir">Imposto de Renda</button>
       </div>
     </div>
@@ -77,7 +76,7 @@
       <div class="card p-4 kpi"><div class="text-xs text-slate-500">Resultado no Ciclo</div><div class="v" id="kpiResultado">R$ 0,00</div><div class="text-[11px] text-slate-500">Prêmios + Resultados (mês)</div></div>
     </section>
 
-    <!-- Gráficos -->
+    <!-- Gráficos (somente os 3 principais) -->
     <section class="grid md:grid-cols-3 gap-3">
       <div class="card p-4">
         <div class="flex items-center justify-between">
@@ -108,40 +107,6 @@
           </div>
         </div>
         <canvas id="chartResultado"></canvas>
-      </div>
-    </section>
-
-    <!-- Gráficos extras -->
-    <section class="grid md:grid-cols-3 gap-3">
-      <div class="card p-4">
-        <div class="flex items-center justify-between">
-          <h3 class="font-semibold mb-2">Alocação por Ticker</h3>
-          <div class="flex gap-2">
-            <button class="btn ghost text-xs" data-dl="chartAlocacao" data-type="png">PNG</button>
-            <button class="btn ghost text-xs" data-dl="chartAlocacao" data-type="csv">CSV</button>
-          </div>
-        </div>
-        <canvas id="chartAlocacao"></canvas>
-      </div>
-      <div class="card p-4">
-        <div class="flex items-center justify-between">
-          <h3 class="font-semibold mb-2">Distribuição de Strikes</h3>
-          <div class="flex gap-2">
-            <button class="btn ghost text-xs" data-dl="chartStrikes" data-type="png">PNG</button>
-            <button class="btn ghost text-xs" data-dl="chartStrikes" data-type="csv">CSV</button>
-          </div>
-        </div>
-        <canvas id="chartStrikes"></canvas>
-      </div>
-      <div class="card p-4">
-        <div class="flex items-center justify-between">
-          <h3 class="font-semibold mb-2">Distribuição por Vencimento</h3>
-          <div class="flex gap-2">
-            <button class="btn ghost text-xs" data-dl="chartVenc" data-type="png">PNG</button>
-            <button class="btn ghost text-xs" data-dl="chartVenc" data-type="csv">CSV</button>
-          </div>
-        </div>
-        <canvas id="chartVenc"></canvas>
       </div>
     </section>
 
@@ -267,12 +232,7 @@
     </section>
   </main>
 
-  <!-- Páginas auxiliares -->
-  <main id="pageSimulador" class="max-w-7xl mx-auto px-4 py-6 hidden">
-    <h2 class="text-lg font-semibold mb-4">Simulador</h2>
-    <p class="text-sm text-slate-500">(em construção)</p>
-  </main>
-
+  <!-- IR (placeholder) -->
   <main id="pageIr" class="max-w-7xl mx-auto px-4 py-6 hidden">
     <h2 class="text-lg font-semibold mb-4">Imposto de Renda</h2>
     <p class="text-sm text-slate-500">(em construção)</p>
@@ -292,7 +252,6 @@
     function inMonth(dateLike, ano, mes){ const d=normalizeISO(dateLike); return !!d && d.getFullYear()===Number(ano) && (d.getMonth()+1)===Number(mes); }
     function BR(dateLike){ const d=normalizeISO(dateLike); if(!d) return ''; const dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yy=d.getFullYear(); return `${dd}/${mm}/${yy}`; }
     function toISO(dmy){ const m=/^(\\d{2})[\\/\\-](\\d{2})[\\/\\-](\\d{4})$/.exec(String(dmy||'')); if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`; }
-    function groupBy(arr, key){ const map=new Map(); arr.forEach(o=>{ const k=key(o); map.set(k,(map.get(k)||[]).concat([o])); }); return map; }
 
     // ===== Navegação
     qsa('.tabs button').forEach(btn=>btn.addEventListener('click',()=>showPage(btn.dataset.page)));
@@ -313,7 +272,7 @@
       const j = await r.json(); if(!j.ok) throw new Error(j.error||'Falha POST'); return j.data;
     }
 
-    // ===== Render – Opções (com botões de vencimento/exercício)
+    // ===== Render – Opções (com encerramento/exercício)
     function renderOpcoes(opcoes){
       const tb = qs('#tbOpcoes');
       if(!opcoes || !opcoes.length){ tb.innerHTML = `<tr><td colspan="9" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
@@ -355,7 +314,6 @@
           }else if(act==='exercida'){
             preco_acao = Number(prompt('Preço da ação no vencimento (R$):')||0);
             taxas = Number(prompt('Taxas (R$):')||0);
-            // sem preço-ação histórico, o usuário informa e calcula manualmente o resultado líquido:
             resultado = Number(prompt('Resultado líquido após execução (R$):')||0);
             status_final = 'Exercida';
           }else{ // não exercida
@@ -388,9 +346,9 @@
     let DATA = { aportes:[], compras:[], opcoes:[], encerr:[], mensal:[] };
     let CTX = { ano:new Date().getFullYear(), mes:new Date().getMonth()+1 };
 
-    // ===== Gráficos
-    let charts = { patrimonio:null, aportes:null, resultado:null, alocacao:null, strikes:null, venc:null };
-    function destroyCharts(){ Object.values(charts).forEach(c=>{ if(c){ c.destroy(); } }); charts={patrimonio:null, aportes:null, resultado:null, alocacao:null, strikes:null, venc:null}; }
+    // ===== Gráficos (apenas os 3)
+    let charts = { patrimonio:null, aportes:null, resultado:null };
+    function destroyCharts(){ Object.values(charts).forEach(c=>{ if(c){ c.destroy(); } }); charts={patrimonio:null, aportes:null, resultado:null}; }
 
     function monthKey(ano, mes){ return `${ano}-${String(mes).padStart(2,'0')}`; }
     function buildMonthlyAggFromRaw(){
@@ -433,56 +391,12 @@
         options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
       });
 
-      // Alocação por ticker (pizza) baseado em compras: soma qtde*preco por ticker
-      const invByTicker = Array.from(groupBy(DATA.compras||[], c=>String(c.ticker||'N/D').toUpperCase()))
-        .map(([t,arr])=>({ ticker:t, investido: arr.reduce((s,x)=> s + Number(x.qtde||0)*Number(x.preco||0), 0) }))
-        .filter(x=>x.investido>0);
-      if(invByTicker.length){
-        charts.alocacao = new Chart(document.getElementById('chartAlocacao').getContext('2d'),{
-          type:'pie',
-          data:{ labels: invByTicker.map(x=>x.ticker), datasets:[{ label:'Investido', data: invByTicker.map(x=>x.investido) }]},
-          options:{ responsive:true, plugins:{ legend:{ position:'bottom' }}}
-        });
-      }
-
-      // Distribuição de strikes (barras por faixa)
-      const strikes = (DATA.opcoes||[]).map(o=>Number(o.strike||0)).filter(v=>v>0);
-      if(strikes.length){
-        const bins = [0,10,20,30,40,50,100,200,500,1000]; // faixas genéricas
-        const counts = new Array(bins.length-1).fill(0);
-        strikes.forEach(s=>{
-          for(let i=0;i<bins.length-1;i++){
-            if(s>bins[i] && s<=bins[i+1]){ counts[i]++; break; }
-          }
-        });
-        const binLabels = counts.map((_,i)=> `${bins[i]+1}–${bins[i+1]}`);
-        charts.strikes = new Chart(document.getElementById('chartStrikes').getContext('2d'),{
-          type:'bar',
-          data:{ labels:binLabels, datasets:[{ label:'Qtde', data:counts }]},
-          options:{ responsive:true, plugins:{ legend:{ display:false }}} 
-        });
-      }
-
-      // Distribuição por vencimento (barras por mês/ano)
-      const vencMap = groupBy((DATA.opcoes||[]).filter(o=>o.vencimento), o=>{
-        const d=normalizeISO(o.vencimento); return d? `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` : '—';
-      });
-      const vencLabels = Array.from(vencMap.keys());
-      const vencQtde   = Array.from(vencMap.values()).map(v=>v.length);
-      if(vencLabels.length){
-        charts.venc = new Chart(document.getElementById('chartVenc').getContext('2d'),{
-          type:'bar',
-          data:{ labels:vencLabels, datasets:[{ label:'Vencimentos', data:vencQtde }]},
-          options:{ responsive:true, plugins:{ legend:{ display:false }}} 
-        });
-      }
-
-      // Botões de download (PNG/CSV)
-      qsa('[data-dl]').forEach(btn=>{
+      // Botões de download (PNG/CSV) apenas dos 3 gráficos
+      document.querySelectorAll('[data-dl]').forEach(btn=>{
         btn.onclick = ()=>{
           const id = btn.getAttribute('data-dl');
           const type = btn.getAttribute('data-type');
-          const ch = {chartPatrimonio:charts.patrimonio, chartAportes:charts.aportes, chartResultado:charts.resultado, chartAlocacao:charts.alocacao, chartStrikes:charts.strikes, chartVenc:charts.venc}[id];
+          const ch = {chartPatrimonio:charts.patrimonio, chartAportes:charts.aportes, chartResultado:charts.resultado}[id];
           if(!ch) return alert('Gráfico ainda não disponível.');
           if(type==='png'){
             const a = document.createElement('a');
@@ -490,7 +404,6 @@
             a.download = id+'.png';
             a.click();
           } else {
-            // CSV simples: Label,Value
             const ds = ch.data.datasets[0] || {data:[]};
             const labels = ch.data.labels || [];
             let csv = 'Label,Valor\n';
@@ -504,7 +417,7 @@
       });
     }
 
-    // UI Contexto
+    // ===== UI Contexto
     function syncCtxToUI(){ qs('#ctxMes').value=String(CTX.mes); qs('#ctxAno').value=String(CTX.ano); }
     function syncUIToCtx(){ const m=Number(qs('#ctxMes').value||CTX.mes); const a=Number(qs('#ctxAno').value||CTX.ano); CTX={ano:a,mes:m}; }
     qs('#btnCtxAplicar').addEventListener('click', ()=>{ syncUIToCtx(); updateAllCalculations(); });
@@ -520,23 +433,24 @@
       const somaPremio = opcoesMes.reduce((s,o)=> s + Number(o.premio||0), 0);
       const somaResEnc = encerrMes.reduce((s,e)=> s + Number(e.resultado||0), 0);
 
-      // KPIs revisados:
       const resultadoCiclo = somaPremio + somaResEnc;
       const base = Math.max(1, somaAporte + somaPremio);
       const rendimentoMesPct = (resultadoCiclo / base) * 100;
 
+      // KPIs
       qs('#kpiAporteMes').textContent = money(somaAporte);
       qs('#kpiPremio').textContent    = money(somaPremio);
       qs('#kpiResultado').textContent = money(resultadoCiclo);
       qs('#kpiRendPerc').textContent  = pct(rendimentoMesPct);
       qs('#kpiSaldo').textContent     = money(somaAporte); // placeholder
 
+      // Cards
       qs('#boxAcoesMes').textContent = somaAporte>0 ? `Valor aportado no mês: ${money(somaAporte)}` : 'Sem dados.';
       qs('#boxOpcoesMes').innerHTML = opcoesMes.length
         ? opcoesMes.map(o=>`${o.codigo} • ${o.subjacente} • Prêmio ${money(o.premio)} • Venc. ${BR(o.vencimento)}`).join('<br>')
         : 'Sem dados.';
 
-      // Linha “automática” no extrato para o mês/ano de referência
+      // Linha “automática” no extrato do mês/ano de referência
       const calc = { ano, mes, aporte:somaAporte, "rend_r$":resultadoCiclo, "rend_%":rendimentoMesPct, patrimonio:(somaAporte + resultadoCiclo) };
       const tb = qs('#tbExtrato');
       tb.innerHTML = `
@@ -628,7 +542,7 @@
       updateAllCalculations();
     }
 
-    // Exportar CSV dos dados Mensal
+    // Exportar CSV dos dados Mensal (ou calculado de bruto)
     qs('#btnExportCsv').addEventListener('click', ()=>{
       const rows = DATA.mensal && DATA.mensal.length ? DATA.mensal : buildMonthlyAggFromRaw().map(r=>({ano:r.ano,mes:r.mes,aporte:r.aporte,"rend_r$":r.rend_rs,"rend_%":r.rend_pct,patrimonio:r.patrimonio}));
       if(!rows.length){ alert('Sem dados para exportar.'); return; }
@@ -648,4 +562,3 @@
   </script>
 </body>
 </html>
-
