@@ -1,69 +1,315 @@
 <!DOCTYPE html>
-qs('#kpiPremio').textContent = money(somaPremio);
-qs('#kpiResultado').textContent = money(somaResEnc);
-// Rendimento % simples (resultado sobre base de aporte + prêmio do mês)
-const base = Math.max(1, somaAporte + somaPremio);
-qs('#kpiRendPerc').textContent = pct((somaResEnc/base)*100);
-// Saldo (placeholder)
-qs('#kpiSaldo').textContent = money(somaAporte);
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Venda Coberta – Patrimônio, Aportes e Ciclo Mensal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{ --card-bg:#fff; --card-br:#e5e7eb; }
+    .card{background:var(--card-bg); border:1px solid var(--card-br); border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.04);}
+    .input{border:1px solid #cbd5e1; border-radius:10px; padding:.65rem .85rem; width:100%;}
+    .btn{border:1px solid #0ea5e9; background:#0284c7; color:#fff; border-radius:10px; padding:.6rem 1rem; font-weight:600;}
+    .btn.secondary{background:#fff; color:#0f172a; border-color:#cbd5e1;}
+    .tabs button{padding:.45rem .9rem; border-radius:10px; border:1px solid #e5e7eb; background:#fff;}
+    .tabs .active{background:#0ea5e9; border-color:#0ea5e9; color:#fff;}
+    .kpi .v{font-size:1.15rem; font-weight:800;}
+    .table{width:100%;}
+    .table th,.table td{border-bottom:1px solid #e5e7eb; padding:.6rem .5rem; text-align:left; white-space:nowrap; font-size:.925rem;}
+    .scroll-x{overflow:auto}
+    .badge{font-size:.75rem; padding:.25rem .6rem; border-radius:999px; border:1px solid #cbd5e1; background:#fff;}
+    .small{font-size:.85rem}
+    .hidden{display:none}
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
 
+  <!-- Topbar -->
+  <header class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-full bg-slate-900 text-white grid place-items-center font-bold">B</div>
+        <div>
+          <div class="font-semibold">Venda Coberta – Patrimônio, Aportes e Ciclo Mensal</div>
+          <div class="text-xs text-slate-500">Conectado ao Google Apps Script</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" id="btnExportCsv" class="btn secondary text-xs">Exportar CSV</button>
+      </div>
+    </div>
+    <div class="max-w-7xl mx-auto px-4 pb-3">
+      <div class="tabs flex gap-2">
+        <button type="button" class="active" data-page="dashboard">Dashboard</button>
+        <button type="button" data-page="simulador">Simulador</button>
+        <button type="button" data-page="ir">Imposto de Renda</button>
+      </div>
+    </div>
+  </header>
 
-// Cards: Ações Aportadas do mês / Opções do mês (com fallback por vencimento)
-qs('#boxAcoesMes').textContent = somaAporte>0 ? `Valor aportado no mês: ${money(somaAporte)}` : 'Sem dados.';
-qs('#boxOpcoesMes').innerHTML = opcoesMes.length
-? opcoesMes.map(o=>`${o.codigo} • ${o.subjacente} • Prêmio ${money(o.premio)} • Venc. ${BR(o.vencimento)}`).join('<br>')
-: 'Sem dados.';
+  <!-- DASHBOARD -->
+  <main id="pageDashboard" class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
+    <!-- Contexto de Mês/Ano -->
+    <section class="card p-4">
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="text-sm font-semibold mr-2">Mês/Ano de referência</div>
+        <select id="ctxMes" class="input w-32 max-w-[120px]">
+          <option value="1">janeiro</option><option value="2">fevereiro</option><option value="3">março</option><option value="4">abril</option>
+          <option value="5">maio</option><option value="6">junho</option><option value="7">julho</option><option value="8">agosto</option>
+          <option value="9">setembro</option><option value="10">outubro</option><option value="11">novembro</option><option value="12">dezembro</option>
+        </select>
+        <input id="ctxAno" class="input w-28 max-w-[100px]" type="number" placeholder="AAAA" />
+        <button id="btnCtxAplicar" class="btn">Aplicar</button>
+        <div class="text-xs text-slate-500 ml-2">Todos os cartões e somatórios usam este mês/ano.</div>
+      </div>
+    </section>
 
-// Extrato: se já houver itens no back, apenas mantém; o Buscar/Aplicar usa seus próprios controles
-}
+    <!-- KPIs -->
+    <section class="grid md:grid-cols-5 gap-3">
+      <div class="card p-4"><div class="text-xs text-slate-500">Saldo Atual</div><div class="v" id="kpiSaldo">R$ 0,00</div><div class="text-[11px] text-slate-500">Caixa</div></div>
+      <div class="card p-4"><div class="text-xs text-slate-500">Aportes no Mês</div><div class="v" id="kpiAporteMes">R$ 0,00</div><div class="text-[11px] text-slate-500">Somente mês/ano em referência</div></div>
+      <div class="card p-4"><div class="text-xs text-slate-500">Rendimento no Mês (%)</div><div class="v" id="kpiRendPerc">0,00%</div><div class="text-[11px] text-slate-500">cálculo simples</div></div>
+      <div class="card p-4"><div class="text-xs text-slate-500">Prêmio no Ciclo</div><div class="v" id="kpiPremio">R$ 0,00</div><div class="text-[11px] text-slate-500">Somente mês/ano em referência</div></div>
+      <div class="card p-4"><div class="text-xs text-slate-500">Resultado no Ciclo</div><div class="v" id="kpiResultado">R$ 0,00</div><div class="text-[11px] text-slate-500">Com encerramentos do mês</div></div>
+    </section>
 
+    <!-- Cards de mês -->
+    <section class="grid md:grid-cols-2 gap-3">
+      <div class="card p-4">
+        <h3 class="font-semibold mb-1">Ações Aportadas do Mês</h3>
+        <div id="boxAcoesMes" class="small text-slate-700">Sem dados.</div>
+      </div>
+      <div class="card p-4">
+        <h3 class="font-semibold mb-1">Opções Vendidas do Mês</h3>
+        <div class="text-xs text-slate-500 mb-1">Considera <b>data_venda</b> OU <b>vencimento</b> no mês/ano de referência</div>
+        <div id="boxOpcoesMes" class="small text-slate-700">Sem dados.</div>
+      </div>
+    </section>
 
-// ===== Extrato (local)
-let ultimoCalc = null;
-function calcularMensalLocal(ano, mes){
-const aporte = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes)).reduce((s,a)=>s+Number(a.valor||0),0);
-const premios= (DATA.opcoes ||[]).filter(o=>inMonth(o.data_venda,ano,mes)).reduce((s,o)=>s+Number(o.premio||0),0);
-const resultados=(DATA.encerr||[]).filter(e=>inMonth(e.data_fechamento,ano,mes)).reduce((s,e)=>s+Number(e.resultado||0),0);
-const rend_rs = premios + resultados;
-const base = Math.max(1, aporte + premios);
-const rend_pct = (rend_rs/base)*100;
-const patrimonio = aporte + rend_rs; // ajuste se desejar outra fórmula
-return {ano,mes,aporte, "rend_r$":rend_rs, "rend_%":rend_pct, patrimonio};
-}
-qs('#btnBuscarExtrato').addEventListener('click', ()=>{
-const ano = Number(qs('#exAno').value || new Date().getFullYear());
-const mes = Number(qs('#exMes').value || (new Date().getMonth()+1));
-ultimoCalc = calcularMensalLocal(ano,mes);
-renderExtrato([ultimoCalc]);
-});
-qs('#btnAplicarExtrato').addEventListener('click', async ()=>{
-if(!ultimoCalc){ alert('Clique em Buscar antes de Aplicar.'); return; }
-await apiPost({ action:'mensal/upsert', ...ultimoCalc });
-alert('Mensal aplicado!');
-await reloadAll();
-});
+    <!-- Carteira + Opções -->
+    <section class="grid md:grid-cols-2 gap-3">
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Carteira</h3>
+          <div class="text-xs text-slate-500">Preço médio, VM, Livre</div>
+        </div>
+        <div class="scroll-x mt-2">
+          <table class="table">
+            <thead><tr>
+              <th>Ticker</th><th>Qtde</th><th>Preço Médio</th><th>Preço Atual</th><th>VM</th><th>Livre</th>
+            </tr></thead>
+            <tbody id="tbCarteira"><tr><td colspan="6" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Opções Cobertas</h3>
+          <div class="text-xs text-slate-500">Abertas • Encerradas</div>
+        </div>
+        <div class="scroll-x mt-2">
+          <table class="table">
+            <thead><tr>
+              <th>Subjacente</th><th>Código</th><th>Qtde</th><th>Strike</th><th>Prêmio</th><th>Venc.</th><th>Status</th><th>Resultado</th>
+            </tr></thead>
+            <tbody id="tbOpcoes"><tr><td colspan="8" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
+    <!-- Extrato Mensal -->
+    <section class="card p-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold">Extrato Mensal</h3>
+        <button type="button" id="btnSyncCtxFromExtrato" class="btn secondary text-xs">Usar mês/ano do filtro</button>
+      </div>
+      <p class="text-xs text-slate-500">Aportes (R$), Rendimentos (R$ e %), Patrimônio no fim do mês.</p>
+      <div class="mt-3 grid md:grid-cols-4 gap-2">
+        <select id="exMes" class="input">
+          <option value="1">jan</option><option value="2">fev</option><option value="3">mar</option><option value="4">abr</option>
+          <option value="5">mai</option><option value="6">jun</option><option value="7">jul</option><option value="8">ago</option>
+          <option value="9">set</option><option value="10">out</option><option value="11">nov</option><option value="12">dez</option>
+        </select>
+        <input id="exAno" class="input" type="number" placeholder="AAAA" />
+        <button type="button" id="btnBuscarExtrato" class="btn">Buscar</button>
+        <button type="button" id="btnAplicarExtrato" class="btn secondary">Aplicar</button>
+      </div>
+      <div class="scroll-x mt-3">
+        <table class="table">
+          <thead><tr><th>Mês</th><th>Aporte</th><th>Rend. (R$)</th><th>Rend. (%)</th><th>Patrimônio</th></tr></thead>
+          <tbody id="tbExtrato"><tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
 
-// ===== Fluxo principal
-async function reloadAll(){
-const [aportes, compras, opcoes, encerr, mensal] = await Promise.all([
-apiGet('aportes'), apiGet('compras'), apiGet('opcoes'), apiGet('encerr'), apiGet('mensal')
-]);
-DATA = { aportes, compras, opcoes, encerr, mensal };
-renderOpcoes(opcoes);
-renderExtrato(mensal);
-updateAllCalculations();
-}
+  <!-- Páginas auxiliares -->
+  <main id="pageSimulador" class="max-w-7xl mx-auto px-4 py-6 hidden">
+    <h2 class="text-lg font-semibold mb-4">Simulador</h2>
+    <p class="text-sm text-slate-500">(em construção)</p>
+  </main>
 
+  <main id="pageIr" class="max-w-7xl mx-auto px-4 py-6 hidden">
+    <h2 class="text-lg font-semibold mb-4">Imposto de Renda</h2>
+    <p class="text-sm text-slate-500">(em construção)</p>
+  </main>
 
-// Init
-(function init(){
-// contexto inicial = mês atual
-syncCtxToUI();
-qs('#exMes').value = String(CTX.mes); qs('#exAno').value = String(CTX.ano);
-reloadAll();
-})();
-</script>
+  <script>
+    // ===== CONFIG FIXA
+    const API_URL = "https://script.google.com/macros/s/AKfycbyRpqe93H1IFKWQuJ8Eu_f3SnZGKnWIXUvizy_iAhmHlm5IuQj0Sf388E-S5cEN_7BbJw/exec";
+    const API_KEY = "Vc7@Rendimentos#2025!";
+
+    // ===== Utils
+    const qs = s => document.querySelector(s);
+    const qsa = s => Array.from(document.querySelectorAll(s));
+    const money = n => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(n||0));
+    const pct   = n => (Number(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+
+    function normalizeISO(x){
+      if(!x) return null;
+      const s = String(x);
+      const clean = s.length>=10 ? s.substring(0,10) : s; // corta fuso
+      const d = new Date(clean + "T00:00:00");
+      return isNaN(d) ? null : d;
+    }
+    function inMonth(dateLike, ano, mes){
+      const d = normalizeISO(dateLike); if(!d) return false;
+      return d.getFullYear()===Number(ano) && (d.getMonth()+1)===Number(mes);
+    }
+    function BR(dateLike){
+      const d = normalizeISO(dateLike); if(!d) return '';
+      const dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yy=d.getFullYear();
+      return `${dd}/${mm}/${yy}`;
+    }
+
+    // ===== Navegação
+    qsa('.tabs button').forEach(btn=>btn.addEventListener('click',()=>showPage(btn.dataset.page)));
+    function showPage(page){
+      qsa('main').forEach(m=>m.classList.add('hidden'));
+      qs('#page'+page.charAt(0).toUpperCase()+page.slice(1)).classList.remove('hidden');
+      qsa('.tabs button').forEach(b=>b.classList.remove('active'));
+      qs(`.tabs button[data-page="${page}"]`).classList.add('active');
+    }
+
+    // ===== API
+    async function apiGet(resource){
+      const r = await fetch(`${API_URL}?resource=${encodeURIComponent(resource)}&key=${encodeURIComponent(API_KEY)}`);
+      const j = await r.json(); if(!j.ok) throw new Error(j.error||'Falha GET'); return j.data||[];
+    }
+    async function apiPost(body){
+      const r = await fetch(API_URL,{ method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(Object.assign({key:API_KEY}, body)) });
+      const j = await r.json(); if(!j.ok) throw new Error(j.error||'Falha POST'); return j.data;
+    }
+
+    // ===== Renderizações
+    function renderOpcoes(opcoes){
+      const tb = qs('#tbOpcoes');
+      if(!opcoes || !opcoes.length){ tb.innerHTML = `<tr><td colspan="8" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
+      tb.innerHTML = opcoes.map(o=>`
+        <tr>
+          <td>${o.subjacente||''}</td>
+          <td>${o.codigo||''}</td>
+          <td>${o.qtde||''}</td>
+          <td>${o.strike||''}</td>
+          <td>${o.premio||''}</td>
+          <td>${BR(o.vencimento)||''}</td>
+          <td>${o.status||''}</td>
+          <td>${o.resultado||''}</td>
+        </tr>`).join('');
+    }
+    function renderExtrato(mensal){
+      const tb = qs('#tbExtrato');
+      if(!mensal || !mensal.length){ tb.innerHTML = `<tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
+      tb.innerHTML = mensal.map(m=>`
+        <tr>
+          <td>${String(m.mes).padStart(2,'0')}/${m.ano}</td>
+          <td>${money(m.aporte||0)}</td>
+          <td>${money(m['rend_r$']||0)}</td>
+          <td>${pct(m['rend_%']||0)}</td>
+          <td>${money(m.patrimonio||0)}</td>
+        </tr>`).join('');
+    }
+
+    // ===== Estado
+    let DATA = { aportes:[], compras:[], opcoes:[], encerr:[], mensal:[] };
+    let CTX = { ano:new Date().getFullYear(), mes:new Date().getMonth()+1 };
+
+    // UI Contexto
+    function syncCtxToUI(){ qs('#ctxMes').value=String(CTX.mes); qs('#ctxAno').value=String(CTX.ano); }
+    function syncUIToCtx(){ const m=Number(qs('#ctxMes').value||CTX.mes); const a=Number(qs('#ctxAno').value||CTX.ano); CTX={ano:a,mes:m}; }
+    qs('#btnCtxAplicar').addEventListener('click', ()=>{ syncUIToCtx(); updateAllCalculations(); });
+    qs('#btnSyncCtxFromExtrato').addEventListener('click', ()=>{ CTX.ano=Number(qs('#exAno').value||CTX.ano); CTX.mes=Number(qs('#exMes').value||CTX.mes); syncCtxToUI(); updateAllCalculations(); });
+
+    // ===== Cálculos por mês/ano
+    function updateAllCalculations(){
+      const {ano,mes}=CTX;
+      const aportesMes = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes));
+      const opcoesMes  = (DATA.opcoes ||[]).filter(o=> inMonth(o.data_venda,ano,mes) || inMonth(o.vencimento,ano,mes) );
+      const encerrMes  = (DATA.encerr ||[]).filter(e=>inMonth(e.data_fechamento,ano,mes));
+
+      const somaAporte = aportesMes.reduce((s,a)=> s + Number(a.valor||0), 0);
+      const somaPremio = opcoesMes.reduce((s,o)=> s + Number(o.premio||0), 0);
+      const somaResEnc = encerrMes.reduce((s,e)=> s + Number(e.resultado||0), 0);
+
+      // KPIs
+      qs('#kpiAporteMes').textContent = money(somaAporte);
+      qs('#kpiPremio').textContent    = money(somaPremio);
+      qs('#kpiResultado').textContent = money(somaResEnc);
+      const base = Math.max(1, somaAporte + somaPremio);
+      qs('#kpiRendPerc').textContent  = pct((somaResEnc/base)*100);
+      qs('#kpiSaldo').textContent     = money(somaAporte); // placeholder
+
+      // Cards
+      qs('#boxAcoesMes').textContent = somaAporte>0 ? `Valor aportado no mês: ${money(somaAporte)}` : 'Sem dados.';
+      qs('#boxOpcoesMes').innerHTML = opcoesMes.length
+        ? opcoesMes.map(o=>`${o.codigo} • ${o.subjacente} • Prêmio ${money(o.premio)} • Venc. ${BR(o.vencimento)}`).join('<br>')
+        : 'Sem dados.';
+    }
+
+    // ===== Extrato (local)
+    let ultimoCalc = null;
+    function calcularMensalLocal(ano, mes){
+      const aporte = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes)).reduce((s,a)=>s+Number(a.valor||0),0);
+      const premios= (DATA.opcoes ||[]).filter(o=>inMonth(o.data_venda,ano,mes)).reduce((s,o)=>s+Number(o.premio||0),0);
+      const resultados=(DATA.encerr||[]).filter(e=>inMonth(e.data_fechamento,ano,mes)).reduce((s,e)=>s+Number(e.resultado||0),0);
+      const rend_rs = premios + resultados;
+      const base = Math.max(1, aporte + premios);
+      const rend_pct = (rend_rs/base)*100;
+      const patrimonio = aporte + rend_rs; // ajuste se desejar outra fórmula
+      return {ano,mes,aporte, "rend_r$":rend_rs, "rend_%":rend_pct, patrimonio};
+    }
+    qs('#btnBuscarExtrato').addEventListener('click', ()=>{
+      const ano = Number(qs('#exAno').value || new Date().getFullYear());
+      const mes = Number(qs('#exMes').value || (new Date().getMonth()+1));
+      ultimoCalc = calcularMensalLocal(ano,mes);
+      renderExtrato([ultimoCalc]);
+    });
+    qs('#btnAplicarExtrato').addEventListener('click', async ()=>{
+      if(!ultimoCalc){ alert('Clique em Buscar antes de Aplicar.'); return; }
+      await apiPost({ action:'mensal/upsert', ...ultimoCalc }); // se seu GAS não tiver esta ação, remova esta linha
+      alert('Mensal aplicado!');
+      await reloadAll();
+    });
+
+    // ===== Fluxo principal
+    async function reloadAll(){
+      const [aportes, compras, opcoes, encerr, mensal] = await Promise.all([
+        apiGet('aportes'), apiGet('compras'), apiGet('opcoes'), apiGet('encerr'), apiGet('mensal')
+      ]);
+      DATA = { aportes, compras, opcoes, encerr, mensal };
+      renderOpcoes(opcoes);
+      renderExtrato(mensal);
+      updateAllCalculations();
+    }
+
+    // Init
+    (function init(){
+      syncCtxToUI();
+      qs('#exMes').value = String(CTX.mes); qs('#exAno').value = String(CTX.ano);
+      reloadAll();
+    })();
+  </script>
 </body>
 </html>
