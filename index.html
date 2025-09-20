@@ -6,24 +6,18 @@
   <title>Venda Coberta – Patrimônio, Aportes e Ciclo Mensal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    :root{
-      --card-bg: #ffffff;
-      --card-br: #e5e7eb;
-    }
+    :root{ --card-bg:#fff; --card-br:#e5e7eb; }
     .card{background:var(--card-bg); border:1px solid var(--card-br); border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.04);}
-    .hl{border:1px dashed #cbd5e1}
     .input{border:1px solid #cbd5e1; border-radius:10px; padding:.65rem .85rem; width:100%;}
     .btn{border:1px solid #0ea5e9; background:#0284c7; color:#fff; border-radius:10px; padding:.6rem 1rem; font-weight:600;}
     .btn.secondary{background:#fff; color:#0f172a; border-color:#cbd5e1;}
-    .badge{font-size:.75rem; padding:.25rem .6rem; border-radius:999px; border:1px solid #cbd5e1; background:#fff;}
     .tabs button{padding:.45rem .9rem; border-radius:10px; border:1px solid #e5e7eb; background:#fff;}
     .tabs .active{background:#0ea5e9; border-color:#0ea5e9; color:#fff;}
-    .kpi{display:flex; gap:.75rem; align-items:center;}
     .kpi .v{font-size:1.15rem; font-weight:800;}
     .table{width:100%;}
     .table th,.table td{border-bottom:1px solid #e5e7eb; padding:.6rem .5rem; text-align:left; white-space:nowrap; font-size:.925rem;}
     .scroll-x{overflow:auto}
-    .pill{border:1px solid #cbd5e1; border-radius:999px; padding:.35rem .7rem; background:#fff; font-size:.85rem;}
+    .badge{font-size:.75rem; padding:.25rem .6rem; border-radius:999px; border:1px solid #cbd5e1; background:#fff;}
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -57,73 +51,46 @@
     <section class="card p-4" id="cfgApi">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-lg font-semibold">Configuração da API (cole e salve)</h2>
-        <div class="flex items-center gap-2">
-          <button type="button" id="btnSaveApi" class="btn">Salvar</button>
-        </div>
+        <button type="button" id="btnSaveApi" class="btn">Salvar</button>
       </div>
       <div class="grid md:grid-cols-2 gap-3">
         <div>
           <label class="text-xs text-slate-600">WEB_APP_URL</label>
-          <input id="apiUrl" class="input" value="https://script.google.com/macros/s/AKfycbzpnjwbV6UnNTKTuO_1sabDMelgS__4dTV7oxd8WFltEssboPRb2RBQQJLXu5WuFOrKNQ/exec">
+          <input id="apiUrl" class="input" value="https://script.google.com/macros/s/AKfycbyRpqe93H1IFKWQuJ8Eu_f3SnZGKnWIXUvizy_iAhmHlm5IuQj0Sf388E-S5cEN_7BbJw/exec">
         </div>
         <div>
           <label class="text-xs text-slate-600">API_KEY</label>
           <input id="apiKey" class="input" value="Vc7@Rendimentos#2025!">
         </div>
       </div>
-      <p class="mt-2 text-xs text-slate-500">Após publicar/atualizar o Web App, cole a URL e salve. A cada troca você pode mexer aqui sem reabrir a página.</p>
+      <p class="mt-2 text-xs text-slate-500">Após publicar/atualizar o Web App, cole a URL e salve. Você pode trocar aqui a qualquer momento.</p>
     </section>
 
     <!-- KPIs -->
     <section class="grid md:grid-cols-5 gap-3">
-      <div class="card p-4 kpi"><div>
-        <div class="text-xs text-slate-500">Saldo Atual</div>
-        <div class="v" id="kpiSaldo">R$ 0,00</div>
-        <div class="text-[11px] text-slate-500">Caixa • Aportes + Ganhos - Custos</div>
-      </div></div>
-      <div class="card p-4 kpi"><div>
-        <div class="text-xs text-slate-500">Aportes no Mês</div>
-        <div class="v" id="kpiAporteMes">R$ 0,00</div>
-        <div class="text-[11px] text-slate-500">Último mês</div>
-      </div></div>
-      <div class="card p-4 kpi"><div>
-        <div class="text-xs text-slate-500">Rendimento no Mês</div>
-        <div class="v" id="kpiRendPerc">0,00%</div>
-        <div class="text-[11px] text-slate-500">% sobre Patrimônio</div>
-      </div></div>
-      <div class="card p-4 kpi"><div>
-        <div class="text-xs text-slate-500">Prêmio no Ciclo</div>
-        <div class="v" id="kpiPremio">R$ 0,00</div>
-        <div class="text-[11px] text-slate-500">Soma das vendas lançadas</div>
-      </div></div>
-      <div class="card p-4 kpi"><div>
-        <div class="text-xs text-slate-500">Resultado no Ciclo</div>
-        <div class="v" id="kpiResultado">R$ 0,00</div>
-        <div class="text-[11px] text-slate-500">Com ajustes/encerramentos</div>
-      </div></div>
+      <div class="card p-4"><div class="text-xs text-slate-500">Saldo Atual</div><div class="v" id="kpiSaldo">R$ 0,00</div><div class="text-[11px] text-slate-500">Caixa</div></div>
+      <div class="card p-4"><div class="text-xs text-slate-500">Aportes no Mês</div><div class="v" id="kpiAporteMes">R$ 0,00</div><div class="text-[11px] text-slate-500">Último mês</div></div>
+      <div class="card p-4"><div class="text-xs text-slate-500">Rendimento no Mês</div><div class="v" id="kpiRendPerc">0,00%</div><div class="text-[11px] text-slate-500">% sobre Patrimônio</div></div>
+      <div class="card p-4"><div class="text-xs text-slate-500">Prêmio no Ciclo</div><div class="v" id="kpiPremio">R$ 0,00</div><div class="text-[11px] text-slate-500">Soma</div></div>
+      <div class="card p-4"><div class="text-xs text-slate-500">Resultado no Ciclo</div><div class="v" id="kpiResultado">R$ 0,00</div><div class="text-[11px] text-slate-500">Com encerramentos</div></div>
     </section>
 
-    <!-- Ciclo, Ações/Aportes, Opções do Mês -->
+    <!-- Ciclo + Cards Info -->
     <section class="grid md:grid-cols-3 gap-3">
       <div class="card p-4">
-        <div class="flex items-center justify-between">
-          <h3 class="font-semibold">Ciclo Mensal – 3ª Sexta-feira</h3>
-        </div>
+        <h3 class="font-semibold">Ciclo Mensal – 3ª Sexta-feira</h3>
         <p class="text-xs text-slate-500 mb-3">Calcule o vencimento do mês e aplique no formulário.</p>
         <div class="grid grid-cols-3 gap-2">
           <select id="cicloMes" class="input">
-            <option value="01">janeiro</option><option value="02">fevereiro</option>
-            <option value="03">março</option><option value="04">abril</option>
-            <option value="05">maio</option><option value="06">junho</option>
-            <option value="07">julho</option><option value="08">agosto</option>
-            <option value="09">setembro</option><option value="10">outubro</option>
-            <option value="11">novembro</option><option value="12">dezembro</option>
+            <option value="01">janeiro</option><option value="02">fevereiro</option><option value="03">março</option><option value="04">abril</option>
+            <option value="05">maio</option><option value="06">junho</option><option value="07">julho</option><option value="08">agosto</option>
+            <option value="09">setembro</option><option value="10">outubro</option><option value="11">novembro</option><option value="12">dezembro</option>
           </select>
           <input id="cicloAno" class="input" type="number" placeholder="AAAA" />
           <button id="btnCalcCiclo" type="button" class="btn">Calcular</button>
         </div>
         <div class="mt-3 text-sm">
-          <span class="pill">Vencimento: <span id="cicloVenc">–</span></span>
+          <span class="badge">Vencimento: <span id="cicloVenc">–</span></span>
           <button id="btnAplicarCiclo" type="button" class="btn secondary ml-2">Aplicar no formulário</button>
         </div>
       </div>
@@ -137,19 +104,19 @@
       </div>
     </section>
 
-    <!-- Gráficos -->
+    <!-- Gráficos (placeholders) -->
     <section class="grid md:grid-cols-3 gap-3">
       <div class="card p-4 h-56"><h3 class="font-semibold">Evolução do Patrimônio</h3><div class="mt-2 text-xs text-slate-500">[gráfico]</div></div>
       <div class="card p-4 h-56"><h3 class="font-semibold">Rendimento Mensal (%)</h3><div class="mt-2 text-xs text-slate-500">[gráfico]</div></div>
       <div class="card p-4 h-56"><h3 class="font-semibold">Alocação</h3><div class="mt-2 text-xs text-slate-500">[gráfico]</div></div>
     </section>
 
-    <!-- Carteira + Opções -->
+    <!-- Tabelas -->
     <section class="grid md:grid-cols-2 gap-3">
       <div class="card p-4">
         <div class="flex items-center justify-between">
           <h3 class="font-semibold">Carteira</h3>
-          <div class="text-xs text-slate-500">Preço médio, VM, P% Livre</div>
+          <div class="text-xs text-slate-500">Preço médio, VM, Livre</div>
         </div>
         <div class="scroll-x mt-2">
           <table class="table">
@@ -163,14 +130,14 @@
       <div class="card p-4">
         <div class="flex items-center justify-between">
           <h3 class="font-semibold">Opções Cobertas</h3>
-          <div class="text-xs text-slate-500">Abertas • Encerradas • Encalhe</div>
+          <div class="text-xs text-slate-500">Abertas • Encerradas</div>
         </div>
         <div class="scroll-x mt-2">
           <table class="table">
             <thead><tr>
-              <th>Subjacente</th><th>Código</th><th>Qtde</th><th>Strike</th><th>Prêmio</th><th>Venc.</th><th>Status</th><th>Resultado</th><th>Ação</th>
+              <th>Subjacente</th><th>Código</th><th>Qtde</th><th>Strike</th><th>Prêmio</th><th>Venc.</th><th>Status</th><th>Resultado</th>
             </tr></thead>
-            <tbody id="tbOpcoes"><tr><td colspan="9" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+            <tbody id="tbOpcoes"><tr><td colspan="8" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -196,7 +163,7 @@
       <div class="scroll-x mt-3">
         <table class="table">
           <thead><tr><th>Mês</th><th>Aporte</th><th>Rend. (R$)</th><th>Rend. (%)</th><th>Patrimônio</th></tr></thead>
-          <tbody id="tbExtrato"><tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+        <tbody id="tbExtrato"><tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -254,133 +221,108 @@
   </main>
 
   <script>
-    // ===== Util =====
-    const qs  = s => document.querySelector(s);
+    // ===== Utils
+    const qs = s => document.querySelector(s);
     const qsa = s => Array.from(document.querySelectorAll(s));
-    const money = (n) => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(n||0));
-    const pct   = (n) => (Number(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+    const money = n => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(n||0));
+    const pct   = n => (Number(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+    document.addEventListener('submit', (e)=>{ e.preventDefault(); e.stopPropagation(); }, true);
+    document.addEventListener('click', (e)=>{ const a=e.target.closest('a[href]'); if(a&&a.closest('form,.card')){e.preventDefault(); e.stopPropagation();}}, true);
 
-    // ===== Config API (com localStorage) =====
-    const DEFAULT_URL = "https://script.google.com/macros/s/AKfycbzpnjwbV6UnNTKTuO_1sabDMelgS__4dTV7oxd8WFltEssboPRb2RBQQJLXu5WuFOrKNQ/exec";
-    const DEFAULT_KEY = "Vc7@Rendimentos#2025!";
-
+    // ===== API cfg
+    const DEFAULT_URL="https://script.google.com/macros/s/AKfycbyRpqe93H1IFKWQuJ8Eu_f3SnZGKnWIXUvizy_iAhmHlm5IuQj0Sf388E-S5cEN_7BbJw/exec";
+    const DEFAULT_KEY="Vc7@Rendimentos#2025!";
     function loadApiConfig(){
       const u = localStorage.getItem('api.url') || DEFAULT_URL;
       const k = localStorage.getItem('api.key') || DEFAULT_KEY;
-      qs('#apiUrl').value = u;
-      qs('#apiKey').value = k;
+      qs('#apiUrl').value=u; qs('#apiKey').value=k;
     }
     function saveApiConfig(){
       localStorage.setItem('api.url', qs('#apiUrl').value.trim());
       localStorage.setItem('api.key', qs('#apiKey').value.trim());
       alert('Configuração salva.');
     }
-    function apiBase(){
-      return {
-        url: (qs('#apiUrl').value || '').trim(),
-        key: (qs('#apiKey').value || '').trim()
-      }
-    }
+    function apiBase(){ return { url:qs('#apiUrl').value.trim(), key:qs('#apiKey').value.trim() }; }
 
     async function apiGet(resource){
-      const { url, key } = apiBase();
-      const r = await fetch(`${url}?resource=${encodeURIComponent(resource)}&key=${encodeURIComponent(key)}`);
-      const ct = r.headers.get('content-type') || '';
-      if (!ct.includes('application/json')) throw new Error('Resposta não-JSON (verifique permissões do Web App).');
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Falha');
-      return j.data || [];
+      const {url,key}=apiBase();
+      const r=await fetch(`${url}?resource=${encodeURIComponent(resource)}&key=${encodeURIComponent(key)}`);
+      const ct=r.headers.get('content-type')||'';
+      if(!ct.includes('application/json')){ const t=await r.text(); console.error('Resposta não-JSON', t); throw new Error('Resposta não-JSON (publique o Web App como "Qualquer pessoa").'); }
+      const j=await r.json(); if(!j.ok) throw new Error(j.error||'Falha'); return j.data||[];
     }
-
     async function apiPost(body){
-      const { url, key } = apiBase();
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(Object.assign({ key }, body))
+      const {url,key}=apiBase();
+      const r=await fetch(url,{
+        method:'POST',
+        // IMPORTANTE: usar text/plain para evitar pré-flight/CORS
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify(Object.assign({key},body))
       });
-      const ct = r.headers.get('content-type') || '';
-      if (!ct.includes('application/json')) throw new Error('Resposta não-JSON (verifique permissões do Web App).');
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'Falha');
-      return j.data;
+      const ct=r.headers.get('content-type')||'';
+      if(!ct.includes('application/json')){ const t=await r.text(); console.error('Resposta não-JSON', t); throw new Error('Resposta não-JSON (publique o Web App como "Qualquer pessoa").'); }
+      const j=await r.json(); if(!j.ok) throw new Error(j.error||'Falha'); return j.data;
     }
 
-    // ===== Navegação básica =====
-    qsa('header .tabs button').forEach(b=>{
-      b.addEventListener('click', ()=>{
-        qsa('header .tabs button').forEach(x=>x.classList.remove('active'));
-        b.classList.add('active');
-        // (nesta versão, o conteúdo é único "dashboard")
-      });
-    });
-
-    // ===== Bloqueios de submit / href em formulários =====
-    document.addEventListener('submit', (e)=>{ e.preventDefault(); e.stopPropagation(); }, true);
-    document.addEventListener('click', (e)=>{
-      const a = e.target.closest('a[href]');
-      if (a && a.closest('form, .card')) { e.preventDefault(); e.stopPropagation(); }
-    }, true);
-
-    // ===== Conversor de data dd/mm/aaaa -> yyyy-mm-dd =====
+    // ===== Helpers
     function toISO(dmy){
-      const m = /^\s*(\d{2})[\/\-](\d{2})[\/\-](\d{4})\s*$/.exec(dmy||'');
-      if (!m) return dmy;
-      const [_, dd, mm, yyyy] = m;
-      return `${yyyy}-${mm}-${dd}`;
+      const m=/^\s*(\d{2})[\/\-](\d{2})[\/\-](\d{4})\s*$/.exec(dmy||'');
+      if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`;
     }
 
-    // ===== Render helpers =====
-    function renderTable(el, rows){
-      if (!rows || !rows.length){
-        el.innerHTML = `<tr><td colspan="99" class="text-slate-500 text-sm">Sem dados.</td></tr>`;
-        return;
-      }
-      const headers = Object.keys(rows[0]);
-      const thead = '<thead><tr>'+headers.map(h=>`<th class="text-xs uppercase text-slate-500">${h}</th>`).join('')+'</tr></thead>';
-      const tbody = '<tbody>'+rows.map(r=>('<tr>'+headers.map(h=>`<td>${r[h] ?? ''}</td>`).join('')+'</tr>')).join('')+'</tbody>';
-      el.parentElement.innerHTML = `<table class="table">${thead}${tbody}</table>`;
+    // ===== Renders (preenchendo apenas TBODY)
+    function renderOpcoes(opcoes){
+      const tb = qs('#tbOpcoes'); if(!tb) return;
+      if(!opcoes || !opcoes.length){ tb.innerHTML = `<tr><td colspan="8" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
+      tb.innerHTML = opcoes.map(o => `
+        <tr>
+          <td>${o.subjacente ?? ''}</td>
+          <td>${o.codigo ?? ''}</td>
+          <td>${o.qtde ?? ''}</td>
+          <td>${o.strike ?? ''}</td>
+          <td>${o.premio ?? ''}</td>
+          <td>${o.vencimento ?? ''}</td>
+          <td>${o.status ?? ''}</td>
+          <td>${o.resultado ?? ''}</td>
+        </tr>
+      `).join('');
+    }
+    function renderExtrato(mensal){
+      const tb = qs('#tbExtrato'); if(!tb) return;
+      if(!mensal || !mensal.length){ tb.innerHTML = `<tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
+      tb.innerHTML = mensal.map(m => `
+        <tr>
+          <td>${String(m.mes).padStart(2,'0')}/${m.ano}</td>
+          <td>${money(m['aporte'])}</td>
+          <td>${money(m['rend_r$'])}</td>
+          <td>${pct(m['rend_%'])}</td>
+          <td>${money(m['patrimonio'])}</td>
+        </tr>
+      `).join('');
     }
 
-    // ===== Dashboard load (Aportes, Compras, Opções) =====
+    // ===== Dados e KPIs
     async function reloadAll(){
       try{
-        const [aportes, compras, opcoes, encerr, mensal, ir] = await Promise.all([
+        const [aportes, compras, opcoes, encerr, mensal] = await Promise.all([
           apiGet('aportes'), apiGet('compras'), apiGet('opcoes'),
-          apiGet('encerr'), apiGet('mensal'), apiGet('ir')
+          apiGet('encerr'), apiGet('mensal')
         ]);
-
-        // KPIs básicos (mock simples; ajuste conforme sua regra)
         const aporteMes = (aportes||[]).reduce((s,a)=> s + Number(a.valor||0), 0);
         qs('#kpiAporteMes').textContent = money(aporteMes);
-        qs('#kpiSaldo').textContent = money(aporteMes); // ajuste: saldo real = formula do seu sistema
-        qs('#kpiRendPerc').textContent = pct(0);
+        qs('#kpiSaldo').textContent = money(aporteMes); // placeholder
         qs('#kpiPremio').textContent = money((opcoes||[]).reduce((s,o)=> s + Number(o.premio||0),0));
         qs('#kpiResultado').textContent = money((encerr||[]).reduce((s,e)=> s + Number(e.resultado||0),0));
-
-        // Tabelas
-        const opTbody = document.createElement('tbody');
-        opTbody.id = 'tbOpcoes';
-        renderTable(opTbody, opcoes);
-        // substitui tbody atual
-        const opTable = document.querySelector('#tbOpcoes').closest('table');
-        opTable.replaceWith(opTable.cloneNode(false));
-        opTable.outerHTML = `<table class="table">${opTable.querySelector('thead')?.outerHTML||'<thead></thead>'}${opTbody.outerHTML}</table>`;
-
-        // Extrato mensal
-        const exTbody = document.createElement('tbody'); exTbody.id='tbExtrato';
-        renderTable(exTbody, mensal);
-        const exTable = document.querySelector('#tbExtrato').closest('table');
-        exTable.replaceWith(exTable.cloneNode(false));
-        exTable.outerHTML = `<table class="table">${exTable.querySelector('thead')?.outerHTML||'<thead></thead>'}${exTbody.outerHTML}</table>`;
-
-      } catch(err){
+        qs('#kpiRendPerc').textContent = pct(0);
+        renderOpcoes(opcoes);
+        renderExtrato(mensal);
+      }catch(err){
         console.error(err);
         alert('Falha ao carregar dados: ' + err.message);
       }
     }
 
-    // ===== Ações: salvar itens =====
+    // ===== Eventos
     qs('#btnSaveApi').addEventListener('click', (e)=>{ e.preventDefault(); saveApiConfig(); });
 
     qs('#btnAddAporte').addEventListener('click', async (e)=>{
@@ -389,80 +331,65 @@
       const valor = Number(qs('#aporteValor').value || 0);
       const obs   = qs('#aporteObs').value || '';
       if (!data || !valor){ alert('Informe data e valor.'); return; }
-      await apiPost({ action:'aportes/create', data, valor, observacao: obs });
-      alert('Aporte salvo!');
-      qs('#aporteData').value=''; qs('#aporteValor').value=''; qs('#aporteObs').value='';
-      reloadAll();
+      try{
+        await apiPost({ action:'aportes/create', data, valor, observacao: obs });
+        alert('Aporte salvo!');
+        qs('#aporteData').value=''; qs('#aporteValor').value=''; qs('#aporteObs').value='';
+        reloadAll();
+      }catch(err){ console.error(err); alert('Erro ao salvar: '+err.message); }
     });
 
     qs('#btnAddCompra').addEventListener('click', async (e)=>{
       e.preventDefault();
-      const ticker = qs('#compraTicker').value.trim();
-      const preco  = Number(qs('#compraPreco').value || 0);
-      const qtde   = Number(qs('#compraQtde').value || 0);
-      const data   = toISO(qs('#compraData').value);
-      if (!ticker || !qtde || !preco || !data){ alert('Preencha todos os campos da compra.'); return; }
-      await apiPost({ action:'compras/create', data, ticker, qtde, preco });
-      alert('Compra salva!');
-      ['#compraTicker','#compraPreco','#compraQtde','#compraData'].forEach(id=> qs(id).value='');
-      reloadAll();
+      const ticker=qs('#compraTicker').value.trim();
+      const preco =Number(qs('#compraPreco').value || 0);
+      const qtde  =Number(qs('#compraQtde').value || 0);
+      const data  =toISO(qs('#compraData').value);
+      if(!ticker||!qtde||!preco||!data){ alert('Preencha todos os campos da compra.'); return; }
+      try{
+        await apiPost({ action:'compras/create', data, ticker, qtde, preco });
+        alert('Compra salva!');
+        ['#compraTicker','#compraPreco','#compraQtde','#compraData'].forEach(id=> qs(id).value='');
+        reloadAll();
+      }catch(err){ console.error(err); alert('Erro ao salvar: '+err.message); }
     });
 
     qs('#btnAddOpcao').addEventListener('click', async (e)=>{
       e.preventDefault();
-      const sub   = qs('#opSubj').value.trim();
-      const cod   = qs('#opCodigo').value.trim();
-      const qtde  = Number(qs('#opQtde').value || 0);
-      const strike= Number(qs('#opStrike').value || 0);
-      const premio= Number(qs('#opPremio').value || 0);
-      const dv    = toISO(qs('#opDataVenda').value);
-      const venc  = toISO(qs('#opVenc').value);
-      if (!sub || !cod || !qtde || !strike || !premio || !dv || !venc){ alert('Preencha todos os campos da opção.'); return; }
-      await apiPost({
-        action:'opcoes/create',
-        data_venda: dv, vencimento: venc, subjacente: sub, codigo: cod,
-        qtde, strike, premio, status:'Aberta', resultado:0
-      });
-      alert('Opção registrada!');
-      ['#opSubj','#opCodigo','#opQtde','#opStrike','#opPremio','#opDataVenda','#opVenc'].forEach(id=> qs(id).value='');
-      reloadAll();
+      const sub=qs('#opSubj').value.trim(), cod=qs('#opCodigo').value.trim();
+      const qtde=Number(qs('#opQtde').value||0), strike=Number(qs('#opStrike').value||0);
+      const premio=Number(qs('#opPremio').value||0);
+      const dv=toISO(qs('#opDataVenda').value), venc=toISO(qs('#opVenc').value);
+      if(!sub||!cod||!qtde||!strike||!premio||!dv||!venc){ alert('Preencha todos os campos da opção.'); return; }
+      try{
+        await apiPost({ action:'opcoes/create', data_venda:dv, vencimento:venc, subjacente:sub, codigo:cod, qtde, strike, premio, status:'Aberta', resultado:0 });
+        alert('Opção registrada!');
+        ['#opSubj','#opCodigo','#opQtde','#opStrike','#opPremio','#opDataVenda','#opVenc'].forEach(id=> qs(id).value='');
+        reloadAll();
+      }catch(err){ console.error(err); alert('Erro ao salvar: '+err.message); }
     });
 
-    // ===== Ciclo Mensal (3ª sexta-feira) =====
+    // Ciclo – 3ª sexta
     function terceiraSexta(ano, mes){
-      // mes: 1..12
-      const d = new Date(ano, mes-1, 1);
-      let sextas = [];
-      while (d.getMonth() === mes-1){
-        if (d.getDay() === 5) sextas.push(new Date(d));
-        d.setDate(d.getDate()+1);
-      }
+      const d=new Date(ano, mes-1, 1); const sextas=[];
+      while(d.getMonth()===mes-1){ if(d.getDay()===5) sextas.push(new Date(d)); d.setDate(d.getDate()+1); }
       return sextas[2] || sextas[1] || sextas[0];
     }
-    qs('#btnCalcCiclo').addEventListener('click', (e)=>{
+    qs('#btnCalcCiclo').addEventListener('click',(e)=>{
       e.preventDefault();
-      const mes = Number(qs('#cicloMes').value || '1');
-      const ano = Number(qs('#cicloAno').value || new Date().getFullYear());
-      const dt = terceiraSexta(ano, mes);
-      if (!dt){ qs('#cicloVenc').textContent = '–'; return; }
-      const dd = String(dt.getDate()).padStart(2,'0');
-      const mm = String(dt.getMonth()+1).padStart(2,'0');
-      const yyyy = dt.getFullYear();
-      qs('#cicloVenc').textContent = `${dd}/${mm}/${yyyy}`;
+      const mes=Number(qs('#cicloMes').value||'1'), ano=Number(qs('#cicloAno').value||new Date().getFullYear());
+      const dt=terceiraSexta(ano,mes); if(!dt){ qs('#cicloVenc').textContent='–'; return; }
+      const dd=String(dt.getDate()).padStart(2,'0'), mm=String(dt.getMonth()+1).padStart(2,'0'), yyyy=dt.getFullYear();
+      qs('#cicloVenc').textContent=`${dd}/${mm}/${yyyy}`;
     });
-    qs('#btnAplicarCiclo').addEventListener('click', (e)=>{
+    qs('#btnAplicarCiclo').addEventListener('click',(e)=>{
       e.preventDefault();
-      const v = qs('#cicloVenc').textContent.trim();
-      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(v)) { alert('Calcule o vencimento primeiro.'); return; }
-      qs('#opVenc').value = v;
-      alert('Vencimento aplicado no formulário de Opções.');
+      const v=qs('#cicloVenc').textContent.trim();
+      if(!/^\d{2}\/\d{2}\/\d{4}$/.test(v)){ alert('Calcule o vencimento primeiro.'); return; }
+      qs('#opVenc').value=v; alert('Vencimento aplicado no formulário de Opções.');
     });
 
-    // ===== Extrato (placeholders) =====
-    qs('#btnBuscarExtrato').addEventListener('click', (e)=>{ e.preventDefault(); alert('Filtro de extrato aplicado (mock).'); });
-    qs('#btnAplicarExtrato').addEventListener('click', (e)=>{ e.preventDefault(); alert('Valores aplicados (mock).'); });
-
-    // ===== Init =====
+    // Init
     loadApiConfig();
     reloadAll();
   </script>
