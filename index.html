@@ -18,6 +18,8 @@
     .table th,.table td{border-bottom:1px solid #e5e7eb; padding:.6rem .5rem; text-align:left; white-space:nowrap; font-size:.925rem;}
     .scroll-x{overflow:auto}
     .badge{font-size:.75rem; padding:.25rem .6rem; border-radius:999px; border:1px solid #cbd5e1; background:#fff;}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .small{font-size:.825rem}
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -47,23 +49,29 @@
   </header>
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-    <!-- Config API -->
+
+    <!-- Config API + Diagnóstico -->
     <section class="card p-4" id="cfgApi">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-lg font-semibold">Configuração da API (cole e salve)</h2>
-        <button type="button" id="btnSaveApi" class="btn">Salvar</button>
+        <h2 class="text-lg font-semibold">Configuração da API</h2>
+        <div class="flex gap-2">
+          <button type="button" id="btnTestApi" class="btn secondary">Testar Status</button>
+          <button type="button" id="btnResetApi" class="btn secondary">Resetar</button>
+          <button type="button" id="btnSaveApi" class="btn">Salvar</button>
+        </div>
       </div>
       <div class="grid md:grid-cols-2 gap-3">
         <div>
           <label class="text-xs text-slate-600">WEB_APP_URL</label>
-          <input id="apiUrl" class="input" value="https://script.google.com/macros/s/AKfycbyRpqe93H1IFKWQuJ8Eu_f3SnZGKnWIXUvizy_iAhmHlm5IuQj0Sf388E-S5cEN_7BbJw/exec">
+          <input id="apiUrl" class="input" value="">
         </div>
         <div>
           <label class="text-xs text-slate-600">API_KEY</label>
-          <input id="apiKey" class="input" value="Vc7@Rendimentos#2025!">
+          <input id="apiKey" class="input" value="">
         </div>
       </div>
-      <p class="mt-2 text-xs text-slate-500">Após publicar/atualizar o Web App, cole a URL e salve. Você pode trocar aqui a qualquer momento.</p>
+      <div id="diag" class="mt-3 text-xs mono text-slate-600"></div>
+      <p class="mt-2 text-xs text-slate-500">Se o status falhar por CORS, verifique a URL/implantação. Este app já evita pré-flight no POST.</p>
     </section>
 
     <!-- KPIs -->
@@ -163,7 +171,7 @@
       <div class="scroll-x mt-3">
         <table class="table">
           <thead><tr><th>Mês</th><th>Aporte</th><th>Rend. (R$)</th><th>Rend. (%)</th><th>Patrimônio</th></tr></thead>
-        <tbody id="tbExtrato"><tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+          <tbody id="tbExtrato"><tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -226,41 +234,80 @@
     const qsa = s => Array.from(document.querySelectorAll(s));
     const money = n => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(n||0));
     const pct   = n => (Number(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
-    document.addEventListener('submit', (e)=>{ e.preventDefault(); e.stopPropagation(); }, true);
-    document.addEventListener('click', (e)=>{ const a=e.target.closest('a[href]'); if(a&&a.closest('form,.card')){e.preventDefault(); e.stopPropagation();}}, true);
 
-    // ===== API cfg
+    // Bloqueio de submit/href em formulários (evita navegação indesejada):
+    document.addEventListener('submit', (e)=>{ e.preventDefault(); e.stopPropagation(); }, true);
+    document.addEventListener('click', (e)=>{
+      const a = e.target.closest('a[href]');
+      if (a && a.closest('form,.card')) { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+
+    // ===== API cfg (FORÇANDO DEFAULT NA 1ª CARGA)
     const DEFAULT_URL="https://script.google.com/macros/s/AKfycbyRpqe93H1IFKWQuJ8Eu_f3SnZGKnWIXUvizy_iAhmHlm5IuQj0Sf388E-S5cEN_7BbJw/exec";
     const DEFAULT_KEY="Vc7@Rendimentos#2025!";
+
+    function forceDefaultsOnce(){
+      // Se a URL salva não corresponde ao DEFAULT, vamos forçar defaults.
+      const savedUrl = localStorage.getItem('api.url');
+      if (!savedUrl || !savedUrl.includes("AKfycbyRpqe93H1I")) {
+        localStorage.setItem('api.url', DEFAULT_URL);
+        localStorage.setItem('api.key', DEFAULT_KEY);
+      }
+    }
     function loadApiConfig(){
-      const u = localStorage.getItem('api.url') || DEFAULT_URL;
-      const k = localStorage.getItem('api.key') || DEFAULT_KEY;
-      qs('#apiUrl').value=u; qs('#apiKey').value=k;
+      qs('#apiUrl').value = localStorage.getItem('api.url') || DEFAULT_URL;
+      qs('#apiKey').value = localStorage.getItem('api.key') || DEFAULT_KEY;
+      diag(`WEB_APP_URL em uso: ${qs('#apiUrl').value}`);
     }
     function saveApiConfig(){
       localStorage.setItem('api.url', qs('#apiUrl').value.trim());
       localStorage.setItem('api.key', qs('#apiKey').value.trim());
       alert('Configuração salva.');
+      diag(`WEB_APP_URL em uso: ${qs('#apiUrl').value}`);
+    }
+    function resetApiConfig(){
+      localStorage.removeItem('api.url');
+      localStorage.removeItem('api.key');
+      loadApiConfig(); // volta aos defaults
+      alert('Configuração resetada.');
     }
     function apiBase(){ return { url:qs('#apiUrl').value.trim(), key:qs('#apiKey').value.trim() }; }
 
+    // ===== Log de diagnóstico na UI
+    function diag(msg){
+      const box = qs('#diag');
+      const now = new Date().toLocaleTimeString();
+      box.innerHTML = `<div>[${now}] ${msg}</div>` + box.innerHTML;
+      console.log('[DIAG]', msg);
+    }
+
+    // ===== API calls
     async function apiGet(resource){
       const {url,key}=apiBase();
+      diag('GET: ' + resource);
       const r=await fetch(`${url}?resource=${encodeURIComponent(resource)}&key=${encodeURIComponent(key)}`);
       const ct=r.headers.get('content-type')||'';
-      if(!ct.includes('application/json')){ const t=await r.text(); console.error('Resposta não-JSON', t); throw new Error('Resposta não-JSON (publique o Web App como "Qualquer pessoa").'); }
+      if(!ct.includes('application/json')){
+        const t=await r.text();
+        diag('GET não-JSON (ver implantação): ' + t.slice(0,120));
+        throw new Error('GET não-JSON (publique o Web App como "Qualquer pessoa").');
+      }
       const j=await r.json(); if(!j.ok) throw new Error(j.error||'Falha'); return j.data||[];
     }
     async function apiPost(body){
       const {url,key}=apiBase();
+      diag('POST: ' + (body.action||''));
       const r=await fetch(url,{
         method:'POST',
-        // IMPORTANTE: usar text/plain para evitar pré-flight/CORS
-        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        headers:{'Content-Type':'text/plain;charset=utf-8'}, // evita pré-flight
         body:JSON.stringify(Object.assign({key},body))
       });
       const ct=r.headers.get('content-type')||'';
-      if(!ct.includes('application/json')){ const t=await r.text(); console.error('Resposta não-JSON', t); throw new Error('Resposta não-JSON (publique o Web App como "Qualquer pessoa").'); }
+      if(!ct.includes('application/json')){
+        const t=await r.text();
+        diag('POST não-JSON: ' + t.slice(0,120));
+        throw new Error('POST não-JSON (ver implantação e URL).');
+      }
       const j=await r.json(); if(!j.ok) throw new Error(j.error||'Falha'); return j.data;
     }
 
@@ -269,8 +316,6 @@
       const m=/^\s*(\d{2})[\/\-](\d{2})[\/\-](\d{4})\s*$/.exec(dmy||'');
       if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`;
     }
-
-    // ===== Renders (preenchendo apenas TBODY)
     function renderOpcoes(opcoes){
       const tb = qs('#tbOpcoes'); if(!tb) return;
       if(!opcoes || !opcoes.length){ tb.innerHTML = `<tr><td colspan="8" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
@@ -293,15 +338,15 @@
       tb.innerHTML = mensal.map(m => `
         <tr>
           <td>${String(m.mes).padStart(2,'0')}/${m.ano}</td>
-          <td>${money(m['aporte'])}</td>
-          <td>${money(m['rend_r$'])}</td>
-          <td>${pct(m['rend_%'])}</td>
-          <td>${money(m['patrimonio'])}</td>
+          <td>${(m['aporte']??0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
+          <td>${(m['rend_r$']??0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
+          <td>${(m['rend_%']??0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2})}%</td>
+          <td>${(m['patrimonio']??0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
         </tr>
       `).join('');
     }
 
-    // ===== Dados e KPIs
+    // ===== Dados + KPIs
     async function reloadAll(){
       try{
         const [aportes, compras, opcoes, encerr, mensal] = await Promise.all([
@@ -317,14 +362,27 @@
         renderOpcoes(opcoes);
         renderExtrato(mensal);
       }catch(err){
-        console.error(err);
+        diag('reloadAll falhou: ' + err.message);
         alert('Falha ao carregar dados: ' + err.message);
       }
     }
 
-    // ===== Eventos
+    // ===== Eventos UI
     qs('#btnSaveApi').addEventListener('click', (e)=>{ e.preventDefault(); saveApiConfig(); });
+    qs('#btnResetApi').addEventListener('click', (e)=>{ e.preventDefault(); resetApiConfig(); });
+    qs('#btnTestApi').addEventListener('click', async (e)=>{
+      e.preventDefault();
+      try{
+        const data = await apiGet('status');
+        diag('STATUS OK: ' + JSON.stringify(data));
+        alert('Status OK. Conexão estabelecida.');
+      }catch(err){
+        diag('STATUS ERRO: ' + err.message);
+        alert('Status ERRO: ' + err.message);
+      }
+    });
 
+    // Aporte
     qs('#btnAddAporte').addEventListener('click', async (e)=>{
       e.preventDefault();
       const data  = toISO(qs('#aporteData').value);
@@ -336,9 +394,10 @@
         alert('Aporte salvo!');
         qs('#aporteData').value=''; qs('#aporteValor').value=''; qs('#aporteObs').value='';
         reloadAll();
-      }catch(err){ console.error(err); alert('Erro ao salvar: '+err.message); }
+      }catch(err){ diag('Aporte ERRO: '+err.message); alert('Erro ao salvar: '+err.message); }
     });
 
+    // Compra
     qs('#btnAddCompra').addEventListener('click', async (e)=>{
       e.preventDefault();
       const ticker=qs('#compraTicker').value.trim();
@@ -351,9 +410,10 @@
         alert('Compra salva!');
         ['#compraTicker','#compraPreco','#compraQtde','#compraData'].forEach(id=> qs(id).value='');
         reloadAll();
-      }catch(err){ console.error(err); alert('Erro ao salvar: '+err.message); }
+      }catch(err){ diag('Compra ERRO: '+err.message); alert('Erro ao salvar: '+err.message); }
     });
 
+    // Opções
     qs('#btnAddOpcao').addEventListener('click', async (e)=>{
       e.preventDefault();
       const sub=qs('#opSubj').value.trim(), cod=qs('#opCodigo').value.trim();
@@ -366,7 +426,7 @@
         alert('Opção registrada!');
         ['#opSubj','#opCodigo','#opQtde','#opStrike','#opPremio','#opDataVenda','#opVenc'].forEach(id=> qs(id).value='');
         reloadAll();
-      }catch(err){ console.error(err); alert('Erro ao salvar: '+err.message); }
+      }catch(err){ diag('Opção ERRO: '+err.message); alert('Erro ao salvar: '+err.message); }
     });
 
     // Ciclo – 3ª sexta
@@ -389,8 +449,12 @@
       qs('#opVenc').value=v; alert('Vencimento aplicado no formulário de Opções.');
     });
 
-    // Init
+    // ===== Init (força defaults, carrega cfg e dados)
+    forceDefaultsOnce();
     loadApiConfig();
+    // Diagnóstico: mostra claramente qual URL está em uso
+    diag('Iniciado. URL atual: ' + (qs('#apiUrl').value));
+    // Carrega dados iniciais
     reloadAll();
   </script>
 </body>
