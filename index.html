@@ -3,370 +3,236 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Venda Coberta – Patrimônio, Aportes e Ciclo Mensal</title>
-  <!-- Tailwind (para utilitários) e Chart.js -->
+  <title>Venda Coberta – Revisado (Seguro)</title>
+  <link rel="icon" href="data:,">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
-    .card { background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow:0 1px 2px rgba(0,0,0,.03); }
-    .metric { font-size:1.375rem; font-weight:800; letter-spacing:-.01em; }
-    .metric-sub { font-size:.75rem; color:#64748b; }
-    .pill { display:inline-flex; align-items:center; justify-content:center; border-radius:9999px; padding:.125rem .625rem; font-size:.75rem; font-weight:600; }
-    .btn { display:inline-flex; align-items:center; gap:.5rem; border:1px solid #e2e8f0; background:#fff; border-radius:12px; padding:.5rem .75rem; font-size:.875rem; font-weight:600; }
-    .btn:hover { background:#f8fafc; }
-    .btn-primary { background:#0f172a; color:#fff; border-color:#0f172a; }
-    .btn-primary:hover { background:#000; }
-    .btn-icon { display:inline-flex; align-items:center; justify-content:center; width:2rem; height:2rem; border:1px solid #e2e8f0; border-radius:.5rem; }
-    .btn-icon:hover { background:#f8fafc; }
-    .label { display:block; font-size:.75rem; font-weight:700; color:#475569; margin-bottom:.25rem; }
-    .input { width:100%; border:1px solid #cbd5e1; border-radius:12px; padding:.5rem .75rem; font-size:.875rem; outline:none; }
-    .input:focus { box-shadow:0 0 0 3px rgba(100,116,139,.2); }
-    .table-head { background:#f8fafc; color:#64748b; font-size:.75rem; }
-    .table-cell { white-space:nowrap; padding:.5rem .75rem; font-size:.875rem; }
-    .tabs button { border:1px solid #e2e8f0; border-radius:12px; padding:.4rem .75rem; font-weight:600; background:#fff; }
-    .tabs button.active { background:#0f172a; border-color:#0f172a; color:#fff; }
-    .modal { position:fixed; inset:0; background:rgba(0,0,0,.4); display:grid; place-items:center; padding:1rem; }
-    .modal-card { background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:1rem; max-width:40rem; width:100%; }
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;border:1px solid #e2e8f0;background:#fff;border-radius:12px;padding:.5rem .75rem;font-size:.875rem;font-weight:600}
+    .btn-primary{background:#0f172a;color:#fff;border-color:#0f172a}
+    .input{width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:.5rem .75rem;font-size:.875rem;outline:none}
+    .label{display:block;font-size:.75rem;font-weight:700;color:#475569;margin-bottom:.25rem}
+    .table-head{background:#f8fafc;color:#64748b;font-size:.75rem}
+    .table-cell{white-space:nowrap;padding:.5rem .75rem;font-size:.875rem}
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
-  <header class="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-slate-100">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="h-9 w-9 grid place-content-center rounded-xl bg-slate-900 text-white text-lg font-bold">₿</div>
-        <div>
-          <h1 class="text-lg font-semibold">Venda Coberta – Patrimônio, Aportes e Ciclo Mensal</h1>
-          <p class="text-xs text-slate-500">Conectado ao Google Sheets (Apps Script)</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <button id="btnExport" class="btn">Exportar CSV</button>
-        <a class="btn" href="#config">Configurar API</a>
+<header class="bg-white border-b border-slate-100">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 grid place-content-center rounded-xl bg-slate-900 text-white text-lg font-bold">₿</div>
+      <div>
+        <h1 class="text-lg font-semibold">Venda Coberta – Dashboard</h1>
+        <p class="text-xs text-slate-500">Conectado ao Google Sheets (Apps Script)</p>
       </div>
     </div>
-    <div class="max-w-7xl mx-auto px-4">
-      <div class="tabs flex gap-2 overflow-x-auto pb-2">
-        <button class="active" data-tab="dashboard">Dashboard</button>
-        <button data-tab="simulador">Simulador</button>
-        <button data-tab="ir">Imposto de Renda</button>
-      </div>
-    </div>
-  </header>
-
-  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-    <section id="config" class="card p-4">
-      <h2 class="font-semibold mb-2">Configuração da API (cole e salve)</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div><label class="label">WEB_APP_URL</label><input id="cfgUrl" class="input" placeholder="https://script.google.com/macros/s/AKfycbxmKHLjwPiItIJaTpr35VASgtIWkJ-zAbIMeP6XVvvH-HEH229js1xk4j8M7ZCHfL1IRg/exec"></div>
-        <div><label class="label">API_KEY</label><input id="cfgKey" class="input" placeholder="Vc7@Rendimentos#2025!"></div>
-      </div>
-      <div class="mt-3 flex gap-2 items-center">
-        <button class="btn btn-primary" id="btnSalvarCfg">Salvar</button>
-        <span class="text-xs text-slate-500" id="cfgStatus">—</span>
-      </div>
-      <p class="text-xs text-slate-500 mt-2">Pré-configurado para a sua URL do Apps Script e sua chave. Você pode trocar aqui a qualquer momento.</p>
-    </section>
-
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-      <div class="card p-4"><div class="text-xs text-slate-500">Saldo Atual</div><div class="metric" id="kpiSaldo">R$ 0,00</div><div class="metric-sub">Caixa + Ações (VM)</div></div>
-      <div class="card p-4"><div class="text-xs text-slate-500">Aportes no Mês</div><div class="metric" id="kpiAporteMes">R$ 0,00</div><div class="metric-sub" id="kpiAporteMesObs">—</div></div>
-      <div class="card p-4"><div class="text-xs text-slate-500">Rendimento do Mês</div><div class="metric flex items-baseline gap-2"><span id="kpiRentMes">0,00%</span><span class="pill bg-slate-100 text-slate-700" id="kpiRentMesVal">R$ 0,00</span></div><div class="metric-sub">Ações + Prêmios + Fechamentos</div></div>
-      <div class="card p-4"><div class="text-xs text-slate-500">Aportado em Ações (acum.)</div><div class="metric" id="kpiAportAcoes">R$ 0,00</div><div class="metric-sub">Custo total de compras</div></div>
-      <div class="card p-4"><div class="text-xs text-slate-500">Prêmios de Opções (acum.)</div><div class="metric" id="kpiPremios">R$ 0,00</div><div class="metric-sub">Soma dos prêmios lançados</div></div>
-    </section>
-
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div class="card p-4">
-        <div class="flex items-center justify-between mb-2"><h2 class="font-semibold">Ciclo Mensal – 3ª Sexta-feira</h2><span class="pill bg-slate-100 text-slate-700" id="pillVenc">—</span></div>
-        <p class="text-xs text-slate-500">Calcule o vencimento mensal (B3) e aplique no formulário.</p>
-        <div class="mt-3 flex gap-2">
-          <input type="month" id="inMes" class="input w-40">
-          <button class="btn btn-primary" id="btnCalcVenc">Calcular</button>
-          <button class="btn" id="btnAplicarVenc">Aplicar no Formulário</button>
-        </div>
-      </div>
-      <div class="card p-4"><h2 class="font-semibold mb-2">Ações Aportadas do Mês</h2><ul id="ulAcoesMes" class="text-sm text-slate-700 space-y-1"></ul></div>
-      <div class="card p-4"><h2 class="font-semibold mb-2">Opções Vendidas do Mês</h2><ul id="ulOpcoesMes" class="text-sm text-slate-700 space-y-1"></ul></div>
-    </section>
-
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div class="card p-4"><h2 class="font-semibold mb-2">Evolução do Patrimônio</h2><canvas id="chartPatrimonio" height="140"></canvas></div>
-      <div class="card p-4"><h2 class="font-semibold mb-2">Rendimento Mensal (%)</h2><canvas id="chartMensal" height="140"></canvas></div>
-      <div class="card p-4"><h2 class="font-semibold mb-2">Alocação</h2><canvas id="chartAlocacao" height="140"></canvas></div>
-    </section>
-
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="card overflow-hidden">
-        <div class="p-4 border-b border-slate-100 flex items-center justify-between"><h2 class="font-semibold">Carteira</h2><div class="text-xs text-slate-500">Preço médio, VM e PnL latente</div></div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full">
-            <thead class="table-head"><tr><th class="table-cell text-left">Ticker</th><th class="table-cell text-right">Qtde</th><th class="table-cell text-right">Preço Médio</th><th class="table-cell text-right">Preço Atual</th><th class="table-cell text-right">VM</th><th class="table-cell text-right">Latente</th></tr></thead>
-            <tbody id="tbCarteira"></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="card overflow-hidden">
-        <div class="p-4 border-b border-slate-100 flex items-center justify-between"><h2 class="font-semibold">Opções Cobertas</h2><div class="text-xs text-slate-500">Aberta · Encerrada · Exercida</div></div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full">
-            <thead class="table-head"><tr><th class="table-cell text-left">Subjacente</th><th class="table-cell text-left">Código</th><th class="table-cell text-right">Qtde</th><th class="table-cell text-right">Strike</th><th class="table-cell text-right">Prêmio</th><th class="table-cell text-center">Venc.</th><th class="table-cell text-center">Status</th><th class="table-cell text-right">Resultado</th><th class="table-cell text-center">Ações</th></tr></thead>
-            <tbody id="tbOpcoes"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section class="card overflow-hidden">
-      <div class="p-4 border-b border-slate-100 flex items-center justify-between">
-        <div><h2 class="font-semibold">Extrato Mensal</h2><p class="text-xs text-slate-500">Aporte (R$), Rendimentos (R$ e %), Patrimônio ao fim do mês</p></div>
-        <div class="flex items-center gap-2"><select id="selAno" class="input w-32"></select></div>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full">
-          <thead class="table-head"><tr><th class="table-cell text-left">Mês</th><th class="table-cell text-right">Aporte</th><th class="table-cell text-right">Rend. (R$)</th><th class="table-cell text-right">Rend. (%)</th><th class="table-cell text-right">Patrimônio</th></tr></thead>
-          <tbody id="tbMensal"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <form class="card p-4 space-y-3" id="formAporte">
-        <div class="flex items-center justify-between"><h3 class="font-semibold">Registrar Aporte</h3><span class="pill bg-slate-100 text-slate-700">Caixa</span></div>
-        <div><label class="label">Data</label><input type="date" name="data" class="input" required></div>
-        <div><label class="label">Valor (R$)</label><input type="number" name="valor" step="0.01" class="input" required></div>
-        <button class="btn btn-primary w-full">Adicionar</button>
-      </form>
-      <form class="card p-4 space-y-3" id="formCompra">
-        <div class="flex items-center justify-between"><h3 class="font-semibold">Comprar Ação</h3><span class="pill bg-slate-100 text-slate-700">Carteira</span></div>
-        <div><label class="label">Ticker</label><input name="ticker" class="input" placeholder="PCAR3" required></div>
-        <div class="grid grid-cols-2 gap-3"><div><label class="label">Qtde</label><input type="number" name="qtde" class="input" required></div><div><label class="label">Preço (R$)</label><input type="number" name="preco" step="0.01" class="input" required></div></div>
-        <div><label class="label">Data</label><input type="date" name="data" class="input" required></div>
-        <button class="btn btn-primary w-full">Adicionar</button>
-      </form>
-      <form class="card p-4 space-y-3" id="formCall">
-        <div class="flex items-center justify-between"><h3 class="font-semibold">Vender Call Coberta</h3><span class="pill bg-slate-100 text-slate-700">Opções</span></div>
-        <div class="grid grid-cols-2 gap-3"><div><label class="label">Subjacente</label><input name="subj" class="input" placeholder="PCAR3" required></div><div><label class="label">Código</label><input name="codigo" class="input" placeholder="PCARX123" required></div></div>
-        <div class="grid grid-cols-3 gap-3"><div><label class="label">Qtde (ações)</label><input type="number" name="qtde" class="input" required></div><div><label class="label">Strike (R$)</label><input type="number" name="strike" step="0.01" class="input" required></div><div><label class="label">Prêmio por ação (R$)</label><input type="number" name="premio" step="0.01" class="input" required></div></div>
-        <div class="grid grid-cols-2 gap-3"><div><label class="label">Data Venda</label><input type="date" name="dataVenda" class="input" required></div><div><label class="label">Vencimento</label><input type="date" name="venc" id="inVenc" class="input" required></div></div>
-        <button class="btn btn-primary w-full">Registrar</button>
-        <p class="text-xs text-slate-500">Use “Aplicar no Formulário” para preencher a 3ª sexta automaticamente.</p>
-      </form>
-    </section>
-
-    <section class="card p-4">
-      <div class="flex items-center justify-between"><h3 class="font-semibold">Encerrar Operação (resultado final)</h3><span class="pill bg-slate-100 text-slate-700">Exercida? Lucro/Prejuízo</span></div>
-      <form id="formFechar" class="grid grid-cols-1 md:grid-cols-5 gap-3 mt-3">
-        <div><label class="label">Código</label><input name="codigo" class="input" required></div>
-        <div><label class="label">Preço Ação no venc. (S_T)</label><input type="number" step="0.01" name="precoAcao" class="input" required></div>
-        <div><label class="label">Custo p/ fechar (R$)</label><input type="number" step="0.01" name="custoFechar" class="input" value="0"></div>
-        <div><label class="label">Taxas (R$)</label><input type="number" step="0.01" name="taxas" class="input" value="0"></div>
-        <div><label class="label">Status Final</label><select name="status" class="input" required><option>Exercida</option><option>Encerrada</option></select></div>
-      </form>
-      <div class="mt-3"><button class="btn btn-primary" id="btnRegistrarFechamento">Registrar Resultado</button></div>
-    </section>
-
-    <section id="tab-ir" class="hidden">
-      <div class="card p-4 space-y-3">
-        <h2 class="font-semibold">Imposto de Renda – Placeholder</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div><label class="label">Competência</label><input type="month" class="input" id="irMes"></div>
-          <div><label class="label">Regime</label><select class="input" id="irRegime"><option>Opções - Venda Coberta</option><option>Opções - Day Trade</option><option>Opções - Outros</option></select></div>
-          <div><label class="label">Alíquota (%)</label><input type="number" step="0.01" class="input" id="irAliquota" placeholder="Ex.: 15"></div>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div><label class="label">Prêmios no mês (R$)</label><input type="number" step="0.01" class="input" id="irPremios"></div>
-          <div><label class="label">Resultados encerrados (R$)</label><input type="number" step="0.01" class="input" id="irResultados"></div>
-          <div><label class="label">Prejuízo a compensar (R$)</label><input type="number" step="0.01" class="input" id="irPrejuizo"></div>
-          <div><label class="label">IR retido (R$)</label><input type="number" step="0.01" class="input" id="irRetido"></div>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div><label class="label">Base de cálculo (R$)</label><input type="number" step="0.01" class="input" id="irBase" disabled placeholder="(a calcular)"></div>
-          <div><label class="label">IR devido (R$)</label><input type="number" step="0.01" class="input" id="irDevido" disabled placeholder="(a calcular)"></div>
-          <div class="flex items-end"><button class="btn w-full" id="irCalcular" disabled>Calcular (em breve)</button></div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <div id="modal" class="hidden modal">
-    <div class="modal-card">
-      <div class="flex items-center justify-between mb-2"><h3 class="font-semibold">Editar Operação</h3><button id="modalClose" class="btn-icon">✕</button></div>
-      <form id="formEdit" class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div><label class="label">ID</label><input name="id" class="input" readonly></div>
-        <div><label class="label">Código</label><input name="codigo" class="input"></div>
-        <div><label class="label">Subjacente</label><input name="subj" class="input"></div>
-        <div><label class="label">Qtde</label><input type="number" name="qtde" class="input"></div>
-        <div><label class="label">Strike (R$)</label><input type="number" step="0.01" name="strike" class="input"></div>
-        <div><label class="label">Prêmio (R$)</label><input type="number" step="0.01" name="premio" class="input"></div>
-        <div><label class="label">Resultado (R$)</label><input type="number" step="0.01" name="resultado" class="input"></div>
-        <div><label class="label">Data Venda</label><input type="date" name="dataVenda" class="input"></div>
-        <div><label class="label">Vencimento</label><input type="date" name="venc" class="input"></div>
-        <div><label class="label">Status</label><select name="status" class="input"><option>Aberta</option><option>Encerrada</option><option>Exercida</option></select></div>
-      </form>
-      <div class="mt-3 flex justify-end gap-2"><button id="btnSaveEdit" class="btn btn-primary">Salvar</button></div>
+    <div class="flex items-center gap-2">
+      <button id="btnExport" class="btn">Exportar CSV</button>
+      <a class="btn" href="#config">Configurar API</a>
     </div>
   </div>
+</header>
 
-  <script>
-    (function() {{
-      if (!localStorage.getItem('WEB_APP_URL')) localStorage.setItem('WEB_APP_URL', 'https://script.google.com/macros/s/AKfycbxmKHLjwPiItIJaTpr35VASgtIWkJ-zAbIMeP6XVvvH-HEH229js1xk4j8M7ZCHfL1IRg/exec');
-      if (!localStorage.getItem('API_KEY')) localStorage.setItem('API_KEY', 'Vc7@Rendimentos#2025!');
-    }})();
+<main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+  <section id="config" class="card p-4">
+    <h2 class="font-semibold mb-2">Configuração da API (cole e salve)</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div><label class="label">WEB_APP_URL</label><input id="cfgUrl" class="input" placeholder="https://script.google.com/macros/s/.../exec"></div>
+      <div><label class="label">API_KEY</label><input id="cfgKey" class="input" placeholder="sua-chave-secreta"></div>
+    </div>
+    <div class="mt-3 flex gap-2 items-center"><button class="btn btn-primary" id="btnSalvarCfg">Salvar</button><span class="text-xs text-slate-500" id="cfgStatus">—</span></div>
+    <p class="text-xs text-slate-500 mt-2">Se publicar um novo deploy do Apps Script, atualize a URL e clique em Salvar.</p>
+  </section>
 
-    const cfg = {{
-      get url(){{ return localStorage.getItem('WEB_APP_URL') || '' }},
-      set url(v){{ localStorage.setItem('WEB_APP_URL', v) }},
-      get key(){{ return localStorage.getItem('API_KEY') || '' }},
-      set key(v){{ localStorage.setItem('API_KEY', v) }},
-    }};
-    document.getElementById('cfgUrl').value = cfg.url;
-    document.getElementById('cfgKey').value = cfg.key;
-    document.getElementById('btnSalvarCfg').onclick = () => {{
-      cfg.url = document.getElementById('cfgUrl').value.trim();
-      cfg.key = document.getElementById('cfgKey').value.trim();
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="card p-4">
+      <h2 class="font-semibold mb-2">Carteira</h2>
+      <div class="overflow-x-auto">
+        <table class="min-w-full">
+          <thead class="table-head"><tr><th class="table-cell text-left">Ticker</th><th class="table-cell text-right">Qtde</th><th class="table-cell text-right">Preço Médio</th><th class="table-cell text-right">Preço Atual</th><th class="table-cell text-right">VM</th><th class="table-cell text-right">Latente</th></tr></thead>
+          <tbody id="tbCarteira"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card p-4">
+      <h2 class="font-semibold mb-2">Opções Cobertas</h2>
+      <div class="overflow-x-auto">
+        <table class="min-w-full">
+          <thead class="table-head"><tr><th class="table-cell text-left">Subjacente</th><th class="table-cell text-left">Código</th><th class="table-cell text-right">Qtde</th><th class="table-cell text-right">Strike</th><th class="table-cell text-right">Prêmio</th><th class="table-cell text-center">Venc.</th><th class="table-cell text-center">Status</th><th class="table-cell text-right">Resultado</th></tr></thead>
+          <tbody id="tbOpcoes"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <form class="card p-4 space-y-3" id="formAporte">
+      <div><h3 class="font-semibold">Registrar Aporte</h3></div>
+      <div><label class="label">Data</label><input type="date" name="data" class="input" required></div>
+      <div><label class="label">Valor (R$)</label><input type="number" name="valor" step="0.01" class="input" required></div>
+      <button class="btn btn-primary w-full">Adicionar</button>
+    </form>
+    <form class="card p-4 space-y-3" id="formCompra">
+      <div><h3 class="font-semibold">Comprar Ação</h3></div>
+      <div><label class="label">Ticker</label><input name="ticker" class="input" required></div>
+      <div class="grid grid-cols-2 gap-3"><div><label class="label">Qtde</label><input type="number" name="qtde" class="input" required></div><div><label class="label">Preço (R$)</label><input type="number" name="preco" step="0.01" class="input" required></div></div>
+      <div><label class="label">Data</label><input type="date" name="data" class="input" required></div>
+      <button class="btn btn-primary w-full">Adicionar</button>
+    </form>
+    <form class="card p-4 space-y-3" id="formCall">
+      <div><h3 class="font-semibold">Vender Call Coberta</h3></div>
+      <div class="grid grid-cols-2 gap-3"><div><label class="label">Subjacente</label><input name="subj" class="input" required></div><div><label class="label">Código</label><input name="codigo" class="input" required></div></div>
+      <div class="grid grid-cols-3 gap-3"><div><label class="label">Qtde</label><input type="number" name="qtde" class="input" required></div><div><label class="label">Strike (R$)</label><input type="number" name="strike" step="0.01" class="input" required></div><div><label class="label">Prêmio (R$)</label><input type="number" name="premio" step="0.01" class="input" required></div></div>
+      <div class="grid grid-cols-2 gap-3"><div><label class="label">Data Venda</label><input type="date" name="dataVenda" class="input" required></div><div><label class="label">Vencimento</label><input type="date" name="venc" id="inVenc" class="input" required></div></div>
+      <button class="btn btn-primary w-full">Registrar</button>
+    </form>
+  </section>
+
+  <section class="card p-4">
+    <h2 class="font-semibold mb-2">Evolução do Patrimônio</h2>
+    <canvas id="chartPatrimonio" height="140"></canvas>
+  </section>
+</main>
+
+<script>
+  // -------- Config --------
+  (function(){
+    if(!localStorage.getItem('WEB_APP_URL')) localStorage.setItem('WEB_APP_URL', 'https://script.google.com/macros/s/AKfycbxmKHLjwPiItIJaTpr35VASgtIWkJ-zAbIMeP6XVvvH-HEH229js1xk4j8M7ZCHfL1IRg/exec');
+    if(!localStorage.getItem('API_KEY')) localStorage.setItem('API_KEY', 'Vc7@Rendimentos#2025!');
+  })();
+  function cfgGet(k){ return localStorage.getItem(k)||''; }
+  function cfgSet(k,v){ localStorage.setItem(k,v); }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.getElementById('cfgUrl').value = cfgGet('WEB_APP_URL');
+    document.getElementById('cfgKey').value = cfgGet('API_KEY');
+    document.getElementById('btnSalvarCfg').onclick = function(){
+      cfgSet('WEB_APP_URL', document.getElementById('cfgUrl').value.trim());
+      cfgSet('API_KEY', document.getElementById('cfgKey').value.trim());
       document.getElementById('cfgStatus').textContent = 'Configuração salva.';
-      loadAll().catch(e=> document.getElementById('cfgStatus').textContent = 'Erro: '+e.message);
-    }};
+      loadAll();
+    };
+  });
 
-    const BRL = new Intl.NumberFormat('pt-BR', {{ style: 'currency', currency: 'BRL' }});
-    const PCT = new Intl.NumberFormat('pt-BR', {{ style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 }});
-    const fmt = v => BRL.format(v||0);
-    const fmtPct = v => (isFinite(v)? PCT.format(v): '—');
-    const today = new Date(); const anoAtual = String(today.getFullYear()); const mesAtual = String(today.getMonth()+1).padStart(2,'0');
-    function thirdFriday(year, monthIndex){{ const d = new Date(year, monthIndex, 1); let countFri = 0; while(d.getMonth()===monthIndex){{ if(d.getDay()===5){{ countFri++; if(countFri===3) return d; }} d.setDate(d.getDate()+1);} return null; }}
-    const q = s => document.querySelector(s);
-
-    async function apiGet(resource){{
-      if(!cfg.url) throw new Error('Configure a WEB_APP_URL');
-      const r = await fetch(`${{cfg.url}}?resource=${{encodeURIComponent(resource)}}&key=${{encodeURIComponent(cfg.key)}}`);
-      const j = await r.json();
+  // -------- API --------
+  function apiGet(resource){
+    var url = cfgGet('WEB_APP_URL');
+    var key = cfgGet('API_KEY');
+    if(!url) return Promise.reject(new Error('Configure a WEB_APP_URL'));
+    var full = url + '?resource=' + encodeURIComponent(resource) + '&key=' + encodeURIComponent(key);
+    return fetch(full).then(function(r){ return r.json(); }).then(function(j){
       if(!j.ok) throw new Error(j.error||'erro');
       return j.data||[];
-    }}
-    async function apiPost(payload){{
-      if(!cfg.url) throw new Error('Configure a WEB_APP_URL');
-      payload.key = cfg.key;
-      const r = await fetch(cfg.url, {{ method:'POST', headers:{{'Content-Type':'application/json'}}, body: JSON.stringify(payload) }});
-      const j = await r.json();
-      if(!j.ok) throw new Error(j.error||'erro');
-      return j.data;
-    }}
+    });
+  }
+  function apiPost(payload){
+    var url = cfgGet('WEB_APP_URL');
+    var key = cfgGet('API_KEY');
+    if(!url) return Promise.reject(new Error('Configure a WEB_APP_URL'));
+    payload.key = key;
+    return fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)})
+      .then(function(r){ return r.json(); })
+      .then(function(j){ if(!j.ok) throw new Error(j.error||'erro'); return j.data; });
+  }
 
-    const store = {{ caixa: 0, acoes: [], calls: [], aportes: [], mensal: {{}}, compras: [] }};
+  // -------- Estado --------
+  var store = { acoes: [], calls: [], aportes: [], compras: [], caixa: 0 };
 
-    function recomputeFromSheets(){{
-      const mensal = {{}};
-      (store.aportes||[]).forEach(ap=>{{ const a=String(ap.data).slice(0,4), m=String(ap.data).slice(5,7); mensal[a]=mensal[a]||{{}}; mensal[a][m]=mensal[a][m]||{{ aporte:0, rendR$:0, rendPct:0, patrimonio:0 }}; mensal[a][m].aporte += Number(ap.valor||0); }});
-      (store.calls||[]).forEach(c=>{{ 
-        if(c.data_venda){{ const a=String(c.data_venda).slice(0,4), m=String(c.data_venda).slice(5,7); mensal[a]=mensal[a]||{{}}; mensal[a][m]=mensal[a][m]||{{ aporte:0, rendR$:0, rendPct:0, patrimonio:0 }}; mensal[a][m].rendR$ += Number(c.premio||0) * Number(c.qtde||0); }}
-        if(c.vencimento){{ const a2=String(c.vencimento).slice(0,4), m2=String(c.vencimento).slice(5,7); mensal[a2]=mensal[a2]||{{}}; mensal[a2][m2]=mensal[a2][m2]||{{ aporte:0, rendR$:0, rendPct:0, patrimonio:0 }}; mensal[a2][m2].rendR$ += Number(c.resultado||0); }}
-      }});
-      Object.entries(mensal).forEach(([a, meses])=>{{ Object.entries(meses).forEach(([m, reg])=>{{ const base = Math.max(1, (reg.aporte||0)); reg.rendPct = (reg.rendR$||0) / base; }}); }});
-      store.mensal = mensal;
-    }}
+  // -------- Render --------
+  function renderCarteira(){
+    var tb = document.getElementById('tbCarteira'); tb.innerHTML='';
+    store.acoes.forEach(function(a){
+      var precoAtual = a.precoAtual || a.preco || 0;
+      var vm = (a.qtde||0)*precoAtual;
+      var lat = (precoAtual - (a.precoMedio||a.preco||0))*(a.qtde||0);
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td class="table-cell">'+(a.ticker||'')+'</td>' +
+                     '<td class="table-cell text-right">'+(a.qtde||0)+'</td>' +
+                     '<td class="table-cell text-right">'+fmt(a.precoMedio||a.preco||0)+'</td>' +
+                     '<td class="table-cell text-right">'+fmt(precoAtual)+'</td>' +
+                     '<td class="table-cell text-right">'+fmt(vm)+'</td>' +
+                     '<td class="table-cell text-right">'+fmt(lat)+'</td>';
+      tb.appendChild(tr);
+    });
+  }
+  function renderOpcoes(){
+    var tb = document.getElementById('tbOpcoes'); tb.innerHTML='';
+    store.calls.forEach(function(c){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td class="table-cell">'+(c.subjacente||'')+'</td>' +
+                     '<td class="table-cell">'+(c.codigo||'')+'</td>' +
+                     '<td class="table-cell text-right">'+(c.qtde||0)+'</td>' +
+                     '<td class="table-cell text-right">'+fmt(Number(c.strike||0))+'</td>' +
+                     '<td class="table-cell text-right">'+fmt(Number(c.premio||0))+'</td>' +
+                     '<td class="table-cell text-center">'+(c.vencimento? new Date(c.vencimento).toLocaleDateString('pt-BR') : '')+'</td>' +
+                     '<td class="table-cell text-center">'+(c.status||'')+'</td>' +
+                     '<td class="table-cell text-right">'+fmt(Number(c.resultado||0))+'</td>';
+      tb.appendChild(tr);
+    });
+  }
 
-    function valorCarteira(){{ return store.acoes.reduce((s,a)=> s + (a.qtde||0) * (a.precoAtual||a.preco||0), 0); }}
-    function saldoAtual(){{ return store.caixa + valorCarteira(); }}
-    function aportadoAcoes(){{ return (store.compras||[]).reduce((s,c)=> s + Number(c.qtde||0)*Number(c.preco||0), 0); }}
-    function somaPremios(){{ return (store.calls||[]).reduce((s,c)=> s + Number(c.premio||0)*Number(c.qtde||0), 0); }}
+  // -------- Utils --------
+  var BRL = new Intl.NumberFormat('pt-BR', {style:'currency',currency:'BRL'});
+  function fmt(v){ return BRL.format(v||0); }
 
-    function renderKPIs(){{
-      q('#kpiSaldo').textContent = fmt(saldoAtual());
-      const mreg = ((store.mensal[anoAtual]||{{}})[mesAtual]) || {{ aporte:0, rendR$:0, rendPct:0, patrimonio:0 }};
-      q('#kpiAporteMes').textContent = fmt(mreg.aporte||0);
-      q('#kpiAporteMesObs').textContent = `Mês ${{mesAtual}}/${{anoAtual}}`;
-      q('#kpiRentMes').textContent = fmtPct(mreg.rendPct||0);
-      q('#kpiRentMesVal').textContent = fmt(mreg.rendR$||0);
-      q('#kpiAportAcoes').textContent = fmt(aportadoAcoes());
-      q('#kpiPremios').textContent = fmt(somaPremios());
-    }}
-    function renderCarteira(){{
-      const tb = q('#tbCarteira'); tb.innerHTML='';
-      store.acoes.forEach(a=>{{ const precoAtual = a.precoAtual || a.preco || 0; const vm = (a.qtde||0) * precoAtual; const lat = (precoAtual - (a.precoMedio||a.preco||0)) * (a.qtde||0); const tr = document.createElement('tr'); tr.innerHTML = `
-          <td class="table-cell">${{a.ticker||a.subjacente||''}}</td>
-          <td class="table-cell text-right">${{a.qtde||0}}</td>
-          <td class="table-cell text-right">${{fmt(a.precoMedio||a.preco||0)}}</td>
-          <td class="table-cell text-right">${{fmt(precoAtual)}}</td>
-          <td class="table-cell text-right">${{fmt(vm)}}</td>
-          <td class="table-cell text-right ${{lat>=0?'text-emerald-600':'text-rose-600'}}">${{fmt(lat)}}</td>`; tb.appendChild(tr); }});
-    }}
-    function actionsCell(id){{
-      return `<div class="flex items-center justify-center gap-1"><button class="btn-icon" title="Editar" data-edit="${{id}}">✎</button><button class="btn-icon" title="Excluir" data-del="${{id}}">🗑</button></div>`;
-    }}
-    function renderOpcoes(){{
-      const tb = q('#tbOpcoes'); tb.innerHTML='';
-      store.calls.forEach(c=>{{ const tag = c.status==='Aberta'?'bg-amber-100 text-amber-800' : c.status==='Exercida'?'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'; const tr = document.createElement('tr'); tr.innerHTML = `
-          <td class="table-cell">${{c.subjacente||''}}</td>
-          <td class="table-cell">${{c.codigo||''}}</td>
-          <td class="table-cell text-right">${{c.qtde||0}}</td>
-          <td class="table-cell text-right">${{fmt(Number(c.strike||0))}}</td>
-          <td class="table-cell text-right">${{fmt(Number(c.premio||0))}}</td>
-          <td class="table-cell text-center">${{c.vencimento? new Date(c.vencimento).toLocaleDateString('pt-BR') : ''}}</td>
-          <td class="table-cell text-center"><span class="pill ${{tag}}">${{c.status||''}}</span></td>
-          <td class="table-cell text-right ${{ Number(c.resultado||0)>=0?'text-emerald-600':'text-rose-600' }}">${{fmt(Number(c.resultado||0))}}</td>
-          <td class="table-cell text-center">${{actionsCell(c.id)}}</td>`; tb.appendChild(tr); }});
-      tb.querySelectorAll('[data-edit]').forEach(btn=> btn.onclick = ()=> openEdit(btn.dataset.edit));
-      tb.querySelectorAll('[data-del]').forEach(btn=> btn.onclick = ()=> delCall(btn.dataset.del));
-    }}
-    function renderMensal(){{
-      const anos = Object.keys(store.mensal||{{}}).sort();
-      const sel = q('#selAno'); sel.innerHTML = anos.map(a=>`<option ${{a===anoAtual?'selected':''}}>${{a}}</option>`).join('');
-      sel.onchange = ()=> buildMensalTable(sel.value);
-      buildMensalTable(anoAtual);
-    }}
-    function buildMensalTable(ano){{
-      const tb = q('#tbMensal'); tb.innerHTML='';
-      const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-      months.forEach(m=>{{ const reg = ((store.mensal[ano]||{{}})[m]) || {{ aporte:0, rendR$:0, rendPct:0, patrimonio:0 }}; const tr = document.createElement('tr'); tr.innerHTML = `
-          <td class="table-cell">${{m}}/${{ano}}</td>
-          <td class="table-cell text-right">${{fmt(reg.aporte)}}</td>
-          <td class="table-cell text-right ${{reg.rendR$>=0?'text-emerald-600':'text-rose-600'}}">${{fmt(reg.rendR$)}}</td>
-          <td class="table-cell text-right ${{reg.rendPct>=0?'text-emerald-600':'text-rose-600'}}">${{fmtPct(reg.rendPct)}}</td>
-          <td class="table-cell text-right">${{reg.patrimonio? fmt(reg.patrimonio): '—'}}</td>`; tb.appendChild(tr); }});
-      if(!store.mensal[ano]) store.mensal[ano] = {{}};
-      if(!store.mensal[ano][mesAtual]) store.mensal[ano][mesAtual] = {{ aporte:0, rendR$:0, rendPct:0, patrimonio:0 }};
-      store.mensal[ano][mesAtual].patrimonio = saldoAtual();
-    }}
-    function renderMesLists(){{
-      const ym = `${{anoAtual}}-${{mesAtual}}`;
-      const comprasMes = (store.compras||[]).filter(c=> String(c.data||'').slice(0,7)===ym).map(c=> `${{c.ticker}}: ${{c.qtde}} @ ${{fmt(c.preco)}} (${{new Date(c.data).toLocaleDateString('pt-BR')}})`);
-      q('#ulAcoesMes').innerHTML = comprasMes.length? comprasMes.map(s=>`<li>• ${{s}}</li>`).join('') : '<li class="text-slate-400">Sem compras no mês</li>';
-      const calls = (store.calls||[]).filter(c=> String(c.data_venda||'').slice(0,7)===ym).map(c=> `${{c.subjacente}}/${{c.codigo}}: ${{c.qtde}} @ prêmio ${{fmt(c.premio)}} (venc. ${{new Date(c.vencimento).toLocaleDateString('pt-BR')}})`);
-      q('#ulOpcoesMes').innerHTML = calls.length? calls.map(s=>`<li>• ${{s}}</li>`).join('') : '<li class="text-slate-400">Sem calls vendidas no mês</li>';
-    }}
+  // -------- Forms --------
+  document.getElementById('formAporte').onsubmit = function(e){
+    e.preventDefault();
+    var fd = new FormData(e.target);
+    apiPost({action:'aportes/create', data: fd.get('data'), valor: Number(fd.get('valor')||0), observacao:''})
+      .then(function(){ e.target.reset(); return loadAll(); })
+      .catch(function(err){ alert(err.message); });
+  };
+  document.getElementById('formCompra').onsubmit = function(e){
+    e.preventDefault();
+    var fd = new FormData(e.target);
+    apiPost({action:'compras/create', data: fd.get('data'), ticker: (fd.get('ticker')||'').toUpperCase(), qtde: Number(fd.get('qtde')||0), preco: Number(fd.get('preco')||0)})
+      .then(function(){ e.target.reset(); return loadAll(); })
+      .catch(function(err){ alert(err.message); });
+  };
+  document.getElementById('formCall').onsubmit = function(e){
+    e.preventDefault();
+    var fd = new FormData(e.target);
+    apiPost({action:'opcoes/create', data_venda: fd.get('dataVenda'), vencimento: fd.get('venc'), subjacente: (fd.get('subj')||'').toUpperCase(), codigo: (fd.get('codigo')||'').toUpperCase(), qtde: Number(fd.get('qtde')||0), strike: Number(fd.get('strike')||0), premio: Number(fd.get('premio')||0), status:'Aberta', resultado:0})
+      .then(function(){ e.target.reset(); return loadAll(); })
+      .catch(function(err){ alert(err.message); });
+  };
 
-    let chPatri, chMensal, chPie;
-    function renderCharts(){{
-      const ano = anoAtual; const dataAno = store.mensal[ano]||{{}};
-      const labels = Object.keys(dataAno).sort();
-      const patri = labels.map(m=> (dataAno[m].patrimonio||null));
-      const rendPct = labels.map(m=> ((dataAno[m].rendPct||0)*100));
-      const aloc = [ valorCarteira(), store.caixa ];
-      if(chPatri) chPatri.destroy(); if(chMensal) chMensal.destroy(); if(chPie) chPie.destroy();
-      chPatri = new Chart(q('#chartPatrimonio'), {{ type:'line', data:{{ labels, datasets:[{{ label:'Patrimônio (R$)', data:patri, tension:.2, fill:false }}]}}, options:{{ plugins:{{ legend:{{display:false}} }}, scales:{{ y:{{ ticks:{{ callback:v=> BRL.format(v) }} }} }} }} }});
-      chMensal = new Chart(q('#chartMensal'), {{ type:'bar', data:{{ labels, datasets:[{{ label:'Rendimento (%)', data:rendPct }}]}}, options:{{ plugins:{{ legend:{{display:false}} }}, scales:{{ y:{{ ticks:{{ callback:v=> v+'%' }}}} }} }} }});
-      chPie = new Chart(q('#chartAlocacao'), {{ type:'pie', data:{{ labels:['Ações','Caixa'], datasets:[{{ data: aloc }}] }}, options:{{}} }});
-    }}
+  // -------- Charts (apenas exemplo) --------
+  var ch;
+  function renderChart(){
+    var ctx = document.getElementById('chartPatrimonio').getContext('2d');
+    if(ch) ch.destroy();
+    ch = new Chart(ctx, {type:'line', data:{labels:['Jan','Fev','Mar'], datasets:[{label:'Patrimônio', data:[1000,1200,1500]}]}, options:{plugins:{legend:{display:false}}}});
+  }
 
-    const modal = q('#modal'); const formEdit = q('#formEdit');
-    q('#modalClose').onclick = ()=> modal.classList.add('hidden');
-    async function openEdit(id){{ const c = store.calls.find(x=> String(x.id)===String(id)); if(!c) return; formEdit.id.value = c.id; formEdit.codigo.value = c.codigo||''; formEdit.subj.value = c.subjacente||''; formEdit.qtde.value = c.qtde||0; formEdit.strike.value = c.strike||0; formEdit.premio.value = c.premio||0; formEdit.resultado.value = c.resultado||0; formEdit.dataVenda.value = c.data_venda||''; formEdit.venc.value = c.vencimento||''; formEdit.status.value = c.status||'Aberta'; modal.classList.remove('hidden'); }}
-    q('#btnSaveEdit').onclick = async ()=>{{ const id = formEdit.id.value; const patch = {{ codigo: formEdit.codigo.value, subjacente: formEdit.subj.value, qtde: Number(formEdit.qtde.value||0), strike: Number(formEdit.strike.value||0), premio: Number(formEdit.premio.value||0), resultado: Number(formEdit.resultado.value||0), data_venda: formEdit.dataVenda.value, vencimento: formEdit.venc.value, status: formEdit.status.value, }}; await apiPost({{ action:'opcoes/update', id, patch }}); await loadAll(); modal.classList.add('hidden'); }};
-    async function delCall(id){{ if(!confirm('Excluir esta operação?')) return; await apiPost({{ action:'opcoes/delete', id }}); await loadAll(); }}
-
-    q('#formAporte').onsubmit = async (e)=>{{ e.preventDefault(); const fd = new FormData(e.target); await apiPost({{ action:'aportes/create', data:fd.get('data'), valor:Number(fd.get('valor')||0), observacao:'' }}); e.target.reset(); await loadAll(); }};
-    q('#formCompra').onsubmit = async (e)=>{{ e.preventDefault(); const fd = new FormData(e.target); await apiPost({{ action:'compras/create', data:fd.get('data'), ticker:fd.get('ticker').toUpperCase(), qtde:Number(fd.get('qtde')||0), preco:Number(fd.get('preco')||0) }}); e.target.reset(); await loadAll(); }};
-    q('#formCall').onsubmit = async (e)=>{{ e.preventDefault(); const fd = new FormData(e.target); await apiPost({{ action:'opcoes/create', data_venda: fd.get('dataVenda'), vencimento: fd.get('venc'), subjacente: fd.get('subj').toUpperCase(), codigo: fd.get('codigo').toUpperCase(), qtde: Number(fd.get('qtde')||0), strike: Number(fd.get('strike')||0), premio: Number(fd.get('premio')||0), status:'Aberta', resultado:0 }}); e.target.reset(); await loadAll(); }};
-    q('#btnRegistrarFechamento').onclick = async ()=>{{ const f = q('#formFechar'); const fd = new FormData(f); const codigo = fd.get('codigo').toUpperCase(); const preco_acao = Number(fd.get('precoAcao')||0); const custo_fechar = Number(fd.get('custoFechar')||0); const taxas = Number(fd.get('taxas')||0); const status_final = fd.get('status'); await apiPost({{ action:'encerrar/create', codigo, data_fechamento:new Date().toISOString().slice(0,10), preco_acao, custo_fechar, taxas, status_final, resultado:0 }}); alert('Encerramento lançado. Atualize o resultado via edição da opção, se necessário.'); f.reset(); await loadAll(); }};
-
-    function updateVenc(){{ const mesEl = q('#inMes'); const now = new Date(); if(!mesEl.value){{ mesEl.value = `${{now.getFullYear()}}-${{String(now.getMonth()+1).padStart(2,'0')}}`; }} const [y,m] = mesEl.value.split('-').map(Number); const d = thirdFriday(y, m-1); if(d){{ q('#pillVenc').textContent = d.toLocaleDateString('pt-BR'); q('#btnAplicarVenc').onclick = ()=>{{ const iso = d.toISOString().slice(0,10); q('#inVenc').value = iso; window.scrollTo({{ top: q('#formCall').offsetTop - 80, behavior:'smooth' }}); }}; }} }}
-    q('#btnCalcVenc').onclick = updateVenc; q('#inMes').addEventListener('change', updateVenc);
-
-    q('#btnExport').onclick = ()=>{{ const rows = [['ANO','MES','APORTE','REND_R$','REND_%','PATRIMONIO']]; Object.entries(store.mensal||{{}}).forEach(([ano, meses])=>{{ Object.entries(meses).forEach(([mes, reg])=>{{ rows.push([ano, mes, reg.aporte||0, reg.rendR$||0, reg.rendPct||0, reg.patrimonio||0]); }}); }}); const csv = rows.map(r=> r.join(';')).join('\n'); const blob = new Blob([csv], {{ type:'text/csv;charset=utf-8;' }}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'extrato_mensal.csv'; a.click(); URL.revokeObjectURL(url); }};
-
-    async function loadAll(){{ document.getElementById('cfgUrl').value = cfg.url; document.getElementById('cfgKey').value = cfg.key; const [aportes, compras, opcoes] = await Promise.all([ apiGet('aportes'), apiGet('compras'), apiGet('opcoes') ]); store.aportes = aportes; store.compras = compras; store.calls = opcoes; store.acoes = compras.reduce((acc, c)=>{{ const k = c.ticker; let x = acc.find(a=>a.ticker===k); if(!x) {{ x = {{ticker:k, qtde:0, preco:0, precoMedio:0, precoAtual:c.preco}}; acc.push(x); }} const qtd = Number(c.qtde||0); const pr = Number(c.preco||0); const custo = qtd * pr; const qtdAnt = x.qtde; x.qtde += qtd; x.precoMedio = ((x.precoMedio*qtdAnt) + custo) / (x.qtde||1); x.precoAtual = pr; return acc; }}, []); const custoCompras = compras.reduce((s,c)=> s + Number(c.qtde||0)*Number(c.preco||0), 0); const totalAportes = aportes.reduce((s,a)=> s + Number(a.valor||0), 0); const premios = opcoes.reduce((s,o)=> s + Number(o.premio||0)*Number(o.qtde||0), 0); store.caixa = totalAportes - custoCompras + premios; recomputeFromSheets(); renderKPIs(); renderCarteira(); renderOpcoes(); renderMensal(); renderMesLists(); renderCharts(); updateVenc(); }}
-
-    loadAll().catch(e=>{{ console.warn(e); document.getElementById('cfgStatus').textContent = 'Erro: '+e.message; }});
-  </script>
+  // -------- Load --------
+  function loadAll(){
+    return Promise.all([apiGet('aportes'), apiGet('compras'), apiGet('opcoes')])
+      .then(function(arr){
+        store.aportes = arr[0]; store.compras = arr[1]; store.calls = arr[2];
+        // carteira a partir de compras
+        var acc = [];
+        store.compras.forEach(function(c){
+          var k = c.ticker;
+          var x = null;
+          for(var i=0;i<acc.length;i++){ if(acc[i].ticker===k){ x = acc[i]; break; } }
+          if(!x){ x = {ticker:k, qtde:0, preco:0, precoMedio:0, precoAtual:c.preco}; acc.push(x); }
+          var qtd = Number(c.qtde||0), pr = Number(c.preco||0);
+          var custo = qtd*pr, qtdAnt = x.qtde;
+          x.qtde += qtd;
+          x.precoMedio = ((x.precoMedio*qtdAnt) + custo) / (x.qtde||1);
+          x.precoAtual = pr;
+        });
+        store.acoes = acc;
+        renderCarteira(); renderOpcoes(); renderChart();
+      })
+      .catch(function(err){
+        document.getElementById('cfgStatus').textContent = 'Erro: ' + err.message;
+        console.warn(err);
+      });
+  }
+  loadAll();
+</script>
 </body>
 </html>
