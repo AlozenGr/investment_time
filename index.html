@@ -143,6 +143,57 @@
         </table>
       </div>
     </section>
+
+    <!-- Formulários -->
+    <section class="grid md:grid-cols-3 gap-3">
+      <!-- Aporte -->
+      <form id="formAporte" class="card p-4" onsubmit="return false;">
+        <h3 class="font-semibold">Registrar Aporte</h3>
+        <div class="mt-2 grid gap-2">
+          <input id="aporteData" class="input" placeholder="dd/mm/aaaa">
+          <input id="aporteValor" class="input" type="number" step="0.01" placeholder="R$">
+          <input id="aporteObs" class="input" placeholder="Observação">
+          <button id="btnAddAporte" type="button" class="btn">Adicionar</button>
+        </div>
+      </form>
+
+      <!-- Compra -->
+      <form id="formCompra" class="card p-4" onsubmit="return false;">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Comprar Ação</h3>
+          <span class="badge">Carteira</span>
+        </div>
+        <div class="mt-2 grid gap-2">
+          <input id="compraTicker" class="input" placeholder="Ticker (ex: PCAR3)">
+          <input id="compraPreco" class="input" type="number" step="0.01" placeholder="Preço (R$)">
+          <input id="compraQtde" class="input" type="number" step="1" placeholder="Qtde">
+          <input id="compraData" class="input" placeholder="dd/mm/aaaa">
+          <button id="btnAddCompra" type="button" class="btn">Adicionar</button>
+        </div>
+      </form>
+
+      <!-- Vender Call Coberta -->
+      <form id="formOpcao" class="card p-4" onsubmit="return false;">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Vender Call Coberta</h3>
+          <span class="badge">Opções</span>
+        </div>
+        <div class="mt-2 grid gap-2">
+          <input id="opSubj" class="input" placeholder="Subjacente (ex: PETR4)">
+          <input id="opCodigo" class="input" placeholder="Código (ex: PETRA30)">
+          <div class="grid grid-cols-2 gap-2">
+            <input id="opQtde" class="input" type="number" step="1" placeholder="Qtde">
+            <input id="opStrike" class="input" type="number" step="0.01" placeholder="Strike (R$)">
+          </div>
+          <input id="opPremio" class="input" type="number" step="0.01" placeholder="Prêmio (R$)">
+          <div class="grid grid-cols-2 gap-2">
+            <input id="opDataVenda" class="input" placeholder="Data Venda (dd/mm/aaaa)">
+            <input id="opVenc" class="input" placeholder="Vencimento (dd/mm/aaaa)">
+          </div>
+          <button id="btnAddOpcao" type="button" class="btn">Registrar</button>
+        </div>
+      </form>
+    </section>
   </main>
 
   <!-- Páginas auxiliares -->
@@ -166,23 +217,10 @@
     const qsa = s => Array.from(document.querySelectorAll(s));
     const money = n => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(n||0));
     const pct   = n => (Number(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
-
-    function normalizeISO(x){
-      if(!x) return null;
-      const s = String(x);
-      const clean = s.length>=10 ? s.substring(0,10) : s; // corta fuso
-      const d = new Date(clean + "T00:00:00");
-      return isNaN(d) ? null : d;
-    }
-    function inMonth(dateLike, ano, mes){
-      const d = normalizeISO(dateLike); if(!d) return false;
-      return d.getFullYear()===Number(ano) && (d.getMonth()+1)===Number(mes);
-    }
-    function BR(dateLike){
-      const d = normalizeISO(dateLike); if(!d) return '';
-      const dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yy=d.getFullYear();
-      return `${dd}/${mm}/${yy}`;
-    }
+    function normalizeISO(x){ if(!x) return null; const s=String(x); const clean = s.length>=10 ? s.substring(0,10) : s; const d = new Date(clean+'T00:00:00'); return isNaN(d)? null : d; }
+    function inMonth(dateLike, ano, mes){ const d=normalizeISO(dateLike); return !!d && d.getFullYear()===Number(ano) && (d.getMonth()+1)===Number(mes); }
+    function BR(dateLike){ const d=normalizeISO(dateLike); if(!d) return ''; const dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yy=d.getFullYear(); return `${dd}/${mm}/${yy}`; }
+    function toISO(dmy){ const m=/^(\\d{2})[\\/\\-](\\d{2})[\\/\\-](\\d{4})$/.exec(String(dmy||'')); if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`; }
 
     // ===== Navegação
     qsa('.tabs button').forEach(btn=>btn.addEventListener('click',()=>showPage(btn.dataset.page)));
@@ -240,7 +278,6 @@
     function syncCtxToUI(){ qs('#ctxMes').value=String(CTX.mes); qs('#ctxAno').value=String(CTX.ano); }
     function syncUIToCtx(){ const m=Number(qs('#ctxMes').value||CTX.mes); const a=Number(qs('#ctxAno').value||CTX.ano); CTX={ano:a,mes:m}; }
     qs('#btnCtxAplicar').addEventListener('click', ()=>{ syncUIToCtx(); updateAllCalculations(); });
-    qs('#btnSyncCtxFromExtrato').addEventListener('click', ()=>{ CTX.ano=Number(qs('#exAno').value||CTX.ano); CTX.mes=Number(qs('#exMes').value||CTX.mes); syncCtxToUI(); updateAllCalculations(); });
 
     // ===== Cálculos por mês/ano
     function updateAllCalculations(){
@@ -266,9 +303,22 @@
       qs('#boxOpcoesMes').innerHTML = opcoesMes.length
         ? opcoesMes.map(o=>`${o.codigo} • ${o.subjacente} • Prêmio ${money(o.premio)} • Venc. ${BR(o.vencimento)}`).join('<br>')
         : 'Sem dados.';
+
+      // Atualiza “linha automática” do extrato para o mês/ano de referência
+      const calc = calcularMensalLocal(ano,mes);
+      const tb = qs('#tbExtrato');
+      const html = `
+        <tr>
+          <td>${String(calc.mes).padStart(2,'0')}/${calc.ano}</td>
+          <td>${money(calc.aporte)}</td>
+          <td>${money(calc["rend_r$"])}</td>
+          <td>${pct(calc["rend_%"])}</td>
+          <td>${money(calc.patrimonio)}</td>
+        </tr>`;
+      tb.innerHTML = html;
     }
 
-    // ===== Extrato (local)
+    // ===== Extrato (local + Aplicar)
     let ultimoCalc = null;
     function calcularMensalLocal(ano, mes){
       const aporte = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes)).reduce((s,a)=>s+Number(a.valor||0),0);
@@ -277,7 +327,7 @@
       const rend_rs = premios + resultados;
       const base = Math.max(1, aporte + premios);
       const rend_pct = (rend_rs/base)*100;
-      const patrimonio = aporte + rend_rs; // ajuste se desejar outra fórmula
+      const patrimonio = aporte + rend_rs; // ajuste livre
       return {ano,mes,aporte, "rend_r$":rend_rs, "rend_%":rend_pct, patrimonio};
     }
     qs('#btnBuscarExtrato').addEventListener('click', ()=>{
@@ -288,9 +338,50 @@
     });
     qs('#btnAplicarExtrato').addEventListener('click', async ()=>{
       if(!ultimoCalc){ alert('Clique em Buscar antes de Aplicar.'); return; }
-      await apiPost({ action:'mensal/upsert', ...ultimoCalc }); // se seu GAS não tiver esta ação, remova esta linha
+      await apiPost({ action:'mensal/upsert', ...ultimoCalc });
       alert('Mensal aplicado!');
       await reloadAll();
+    });
+    qs('#btnSyncCtxFromExtrato').addEventListener('click', ()=>{
+      const ano = Number(qs('#exAno').value || CTX.ano);
+      const mes = Number(qs('#exMes').value || CTX.mes);
+      CTX = { ano, mes };
+      syncCtxToUI();
+      updateAllCalculations();
+    });
+
+    // ===== Formulários
+    qs('#btnAddAporte').addEventListener('click', async ()=>{
+      const data  = toISO(qs('#aporteData').value);
+      const valor = Number(qs('#aporteValor').value||0);
+      const observacao = qs('#aporteObs').value||'';
+      if(!data || !valor){ alert('Informe data e valor.'); return; }
+      await apiPost({ action:'aportes/create', data, valor, observacao });
+      qs('#aporteData').value=''; qs('#aporteValor').value=''; qs('#aporteObs').value='';
+      await reloadAll();
+      alert('Aporte salvo!');
+    });
+    qs('#btnAddCompra').addEventListener('click', async ()=>{
+      const ticker=qs('#compraTicker').value.trim();
+      const preco =Number(qs('#compraPreco').value||0);
+      const qtde  =Number(qs('#compraQtde').value||0);
+      const data  =toISO(qs('#compraData').value);
+      if(!ticker||!preco||!qtde||!data){ alert('Preencha todos os campos.'); return; }
+      await apiPost({ action:'compras/create', data, ticker, qtde, preco });
+      ['#compraTicker','#compraPreco','#compraQtde','#compraData'].forEach(id=>qs(id).value='');
+      await reloadAll();
+      alert('Compra salva!');
+    });
+    qs('#btnAddOpcao').addEventListener('click', async ()=>{
+      const sub=qs('#opSubj').value.trim(), cod=qs('#opCodigo').value.trim();
+      const qtde=Number(qs('#opQtde').value||0), strike=Number(qs('#opStrike').value||0);
+      const premio=Number(qs('#opPremio').value||0);
+      const dv=toISO(qs('#opDataVenda').value), venc=toISO(qs('#opVenc').value);
+      if(!sub||!cod||!qtde||!strike||!premio||!dv||!venc){ alert('Preencha todos os campos.'); return; }
+      await apiPost({ action:'opcoes/create', data_venda:dv, vencimento:venc, subjacente:sub, codigo:cod, qtde, strike, premio, status:'Aberta', resultado:0 });
+      ['#opSubj','#opCodigo','#opQtde','#opStrike','#opPremio','#opDataVenda','#opVenc'].forEach(id=>qs(id).value='');
+      await reloadAll();
+      alert('Opção registrada!');
     });
 
     // ===== Fluxo principal
