@@ -23,7 +23,7 @@
       <span class="text-sm text-slate-500 hidden md:inline">Aportes, Compras, Opções, Encerramentos, IR</span>
     </div>
     <div class="flex items-center gap-3 text-sm">
-      <button id="btnReload" class="btn">Recarregar Listas</button>
+      <button id="btnReload" type="button" class="btn">Recarregar Listas</button>
     </div>
   </header>
 
@@ -47,12 +47,12 @@
     <!-- Abas -->
     <section class="card p-4 md:p-6">
       <div class="flex flex-wrap gap-2 mb-4">
-        <button data-tab="aportes" class="tab active">Aportes</button>
-        <button data-tab="compras" class="tab">Compras</button>
-        <button data-tab="opcoes" class="tab">Opções</button>
-        <button data-tab="encerr" class="tab">Encerramentos</button>
-        <button data-tab="mensal" class="tab">Mensal</button>
-        <button data-tab="ir" class="tab">IR</button>
+        <button data-tab="aportes" type="button" class="tab active">Aportes</button>
+        <button data-tab="compras" type="button" class="tab">Compras</button>
+        <button data-tab="opcoes" type="button" class="tab">Opções</button>
+        <button data-tab="encerr" type="button" class="tab">Encerramentos</button>
+        <button data-tab="mensal" type="button" class="tab">Mensal</button>
+        <button data-tab="ir" type="button" class="tab">IR</button>
       </div>
 
       <!-- LISTAS -->
@@ -67,21 +67,21 @@
 
       <hr class="my-6" />
 
-      <!-- FORMULÁRIOS -->
+      <!-- FORMULÁRIOS: INSERÇÃO RÁPIDA -->
       <div id="formsArea" class="space-y-6">
         <!-- Aportes -->
-        <div id="form-aportes">
+        <form id="form-aportes" onsubmit="return false;">
           <h3 class="font-semibold mb-2">Novo Aporte</h3>
           <div class="grid md:grid-cols-4 gap-3">
             <input id="ap_data" class="input" placeholder="Data (YYYY-MM-DD)" />
             <input id="ap_valor" class="input" type="number" step="0.01" placeholder="Valor" />
             <input id="ap_obs" class="input" placeholder="Observação" />
-            <button id="ap_submit" class="btn">Adicionar</button>
+            <button id="ap_submit" type="button" class="btn">Adicionar</button>
           </div>
-        </div>
+        </form>
 
         <!-- Compras -->
-        <div id="form-compras" class="hidden">
+        <form id="form-compras" class="hidden" onsubmit="return false;">
           <h3 class="font-semibold mb-2">Nova Compra</h3>
           <div class="grid md:grid-cols-6 gap-3">
             <input id="co_data" class="input" placeholder="Data (YYYY-MM-DD)" />
@@ -89,12 +89,12 @@
             <input id="co_qtde" class="input" type="number" step="1" placeholder="Qtde" />
             <input id="co_preco" class="input" type="number" step="0.01" placeholder="Preço" />
             <div class="md:col-span-1"></div>
-            <button id="co_submit" class="btn md:col-span-1">Adicionar</button>
+            <button id="co_submit" type="button" class="btn md:col-span-1">Adicionar</button>
           </div>
-        </div>
+        </form>
 
         <!-- Opções -->
-        <div id="form-opcoes" class="hidden">
+        <form id="form-opcoes" class="hidden" onsubmit="return false;">
           <h3 class="font-semibold mb-2">Nova Venda de Opção</h3>
           <div class="grid md:grid-cols-6 gap-3">
             <input id="op_data_venda" class="input" placeholder="Data venda (YYYY-MM-DD)" />
@@ -104,12 +104,12 @@
             <input id="op_qtde" class="input" type="number" step="1" placeholder="Qtde" />
             <input id="op_strike" class="input" type="number" step="0.01" placeholder="Strike" />
             <input id="op_premio" class="input" type="number" step="0.01" placeholder="Prêmio R$" />
-            <button id="op_submit" class="btn md:col-span-1">Adicionar</button>
+            <button id="op_submit" type="button" class="btn md:col-span-1">Adicionar</button>
           </div>
-        </div>
+        </form>
 
         <!-- Encerramentos -->
-        <div id="form-encerr" class="hidden">
+        <form id="form-encerr" class="hidden" onsubmit="return false;">
           <h3 class="font-semibold mb-2">Novo Encerramento</h3>
           <div class="grid md:grid-cols-6 gap-3">
             <input id="en_codigo" class="input" placeholder="Código Opção" />
@@ -118,12 +118,12 @@
             <input id="en_custo" class="input" type="number" step="0.01" placeholder="Custo Fechar" />
             <input id="en_taxas" class="input" type="number" step="0.01" placeholder="Taxas" />
             <input id="en_result" class="input" type="number" step="0.01" placeholder="Resultado R$" />
-            <button id="en_submit" class="btn md:col-span-1">Adicionar</button>
+            <button id="en_submit" type="button" class="btn md:col-span-1">Adicionar</button>
           </div>
-        </div>
+        </form>
 
         <!-- Mensal -->
-        <div id="form-mensal" class="hidden">
+        <form id="form-mensal" class="hidden" onsubmit="return false;">
           <h3 class="font-semibold mb-2">Mensal (Upsert)</h3>
           <div class="grid md:grid-cols-6 gap-3">
             <input id="me_ano" class="input" type="number" placeholder="Ano (ex: 2025)" />
@@ -132,12 +132,12 @@
             <input id="me_rendr" class="input" type="number" step="0.01" placeholder="Rend R$" />
             <input id="me_rendp" class="input" type="number" step="0.01" placeholder="Rend %" />
             <input id="me_patr" class="input" type="number" step="0.01" placeholder="Patrimônio" />
-            <button id="me_submit" class="btn md:col-span-1">Salvar</button>
+            <button id="me_submit" type="button" class="btn md:col-span-1">Salvar</button>
           </div>
-        </div>
+        </form>
 
         <!-- IR -->
-        <div id="form-ir" class="hidden">
+        <form id="form-ir" class="hidden" onsubmit="return false;">
           <h3 class="font-semibold mb-2">IR (Upsert)</h3>
           <div class="grid md:grid-cols-6 gap-3">
             <input id="ir_comp" class="input" placeholder="Competência (YYYY-MM)" />
@@ -150,9 +150,9 @@
             <input id="ir_darf" class="input" placeholder="DARF nº" />
             <input id="ir_pago" class="input" placeholder="Pago em (YYYY-MM-DD)" />
             <input id="ir_obs" class="input" placeholder="Obs" />
-            <button id="ir_submit" class="btn md:col-span-1">Salvar</button>
+            <button id="ir_submit" type="button" class="btn md:col-span-1">Salvar</button>
           </div>
-        </div>
+        </form>
       </div>
     </section>
   </main>
@@ -213,20 +213,33 @@
 
     // Tabs
     qsa('.tab').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
+      btn.addEventListener('click', (ev)=>{
+        ev.preventDefault();
         qsa('.tab').forEach(b=>b.classList.remove('active'));
         btn.classList.add('active');
         const tab = btn.dataset.tab;
+        // listas
         qsa('#listArea > div').forEach(div=>div.classList.add('hidden'));
         qs('#list-'+tab).classList.remove('hidden');
-        qsa('#formsArea > div').forEach(div=>div.classList.add('hidden'));
+        // forms
+        qsa('#formsArea > form').forEach(div=>div.classList.add('hidden'));
         const formId = 'form-'+tab;
         if (qs('#'+formId)) qs('#'+formId).classList.remove('hidden');
       });
     });
 
+    // Helper para clique seguro (sempre previne submit)
+    const safeClick = (sel, handler) => {
+      const el = qs(sel);
+      if (!el) return;
+      el.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        try { await handler(); } catch(err){ alert(err.message || 'Erro'); }
+      });
+    };
+
     // Submits
-    qs('#ap_submit').addEventListener('click', async ()=>{
+    safeClick('#ap_submit', async ()=>{
       const payload = {
         action:'aportes/create',
         data: qs('#ap_data').value,
@@ -234,12 +247,12 @@
         observacao: qs('#ap_obs').value
       };
       const res = await apiPost(payload);
-      if (!res.ok) return alert(res.error||'Erro');
+      if (!res.ok) throw new Error(res.error||'Erro ao salvar aporte');
       await loadAll();
       qs('#ap_data').value = ''; qs('#ap_valor').value = ''; qs('#ap_obs').value = '';
     });
 
-    qs('#co_submit').addEventListener('click', async ()=>{
+    safeClick('#co_submit', async ()=>{
       const payload = {
         action:'compras/create',
         data: qs('#co_data').value,
@@ -248,12 +261,12 @@
         preco: Number(qs('#co_preco').value||0)
       };
       const res = await apiPost(payload);
-      if (!res.ok) return alert(res.error||'Erro');
+      if (!res.ok) throw new Error(res.error||'Erro ao salvar compra');
       await loadAll();
       ['#co_data','#co_ticker','#co_qtde','#co_preco'].forEach(id=>qs(id).value='');
     });
 
-    qs('#op_submit').addEventListener('click', async ()=>{
+    safeClick('#op_submit', async ()=>{
       const payload = {
         action:'opcoes/create',
         data_venda: qs('#op_data_venda').value,
@@ -267,13 +280,13 @@
         resultado: 0
       };
       const res = await apiPost(payload);
-      if (!res.ok) return alert(res.error||'Erro');
+      if (!res.ok) throw new Error(res.error||'Erro ao salvar opção');
       await loadAll();
       ['#op_data_venda','#op_venc','#op_subj','#op_codigo','#op_qtde','#op_strike','#op_premio']
         .forEach(id=>qs(id).value='');
     });
 
-    qs('#en_submit').addEventListener('click', async ()=>{
+    safeClick('#en_submit', async ()=>{
       const payload = {
         action:'encerrar/create',
         codigo: qs('#en_codigo').value,
@@ -285,12 +298,12 @@
         resultado: Number(qs('#en_result').value||0),
       };
       const res = await apiPost(payload);
-      if (!res.ok) return alert(res.error||'Erro');
+      if (!res.ok) throw new Error(res.error||'Erro ao salvar encerramento');
       await loadAll();
       ['#en_codigo','#en_data','#en_preco','#en_custo','#en_taxas','#en_result'].forEach(id=>qs(id).value='');
     });
 
-    qs('#me_submit').addEventListener('click', async ()=>{
+    safeClick('#me_submit', async ()=>{
       const payload = {
         action:'mensal/upsert',
         ano: Number(qs('#me_ano').value||0),
@@ -301,11 +314,11 @@
         patrimonio: Number(qs('#me_patr').value||0)
       };
       const res = await apiPost(payload);
-      if (!res.ok) return alert(res.error||'Erro');
+      if (!res.ok) throw new Error(res.error||'Erro ao salvar mensal');
       await loadAll();
     });
 
-    qs('#ir_submit').addEventListener('click', async ()=>{
+    safeClick('#ir_submit', async ()=>{
       const payload = {
         action:'ir/upsert',
         competencia: qs('#ir_comp').value,
@@ -320,11 +333,13 @@
         obs: qs('#ir_obs').value
       };
       const res = await apiPost(payload);
-      if (!res.ok) return alert(res.error||'Erro');
+      if (!res.ok) throw new Error(res.error||'Erro ao salvar IR');
       await loadAll();
     });
 
-    qs('#btnReload').addEventListener('click', loadAll);
+    qs('#btnReload').addEventListener('click', (e)=>{ e.preventDefault(); loadAll(); });
+
+    // init
     loadAll();
   </script>
 </body>
