@@ -18,11 +18,7 @@
     .table th,.table td{border-bottom:1px solid #e5e7eb; padding:.6rem .5rem; text-align:left; white-space:nowrap; font-size:.925rem;}
     .scroll-x{overflow:auto}
     .badge{font-size:.75rem; padding:.25rem .6rem; border-radius:999px; border:1px solid #cbd5e1; background:#fff;}
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-    .toast{position:fixed; right:16px; bottom:16px; background:#111827; color:#fff; padding:.75rem 1rem; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.2); opacity:0; transform:translateY(8px); transition:.25s;}
-    .toast.show{opacity:1; transform:translateY(0)}
-    .chip{display:inline-flex; align-items:center; gap:6px; font-size:.75rem; border:1px solid #cbd5e1; border-radius:999px; padding:.25rem .6rem;}
-    .muted{color:#64748b}
+    .small{font-size:.85rem}
     .hidden{display:none}
   </style>
 </head>
@@ -40,7 +36,6 @@
       </div>
       <div class="flex items-center gap-2">
         <button type="button" id="btnExportCsv" class="btn secondary text-xs">Exportar CSV</button>
-        <button type="button" id="btnConfigApi" class="btn secondary text-xs">Configurar API</button>
       </div>
     </div>
     <div class="max-w-7xl mx-auto px-4 pb-3">
@@ -54,29 +49,6 @@
 
   <!-- DASHBOARD -->
   <main id="page-dashboard" class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-    <!-- Config API + Diagnóstico -->
-    <section class="card p-4" id="cfgApi">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-lg font-semibold">Configuração da API</h2>
-        <div class="flex gap-2">
-          <button type="button" id="btnTestApi" class="btn secondary">Testar Status</button>
-          <button type="button" id="btnResetApi" class="btn secondary">Resetar</button>
-          <button type="button" id="btnSaveApi" class="btn">Salvar</button>
-        </div>
-      </div>
-      <div class="grid md:grid-cols-2 gap-3">
-        <div>
-          <label class="text-xs text-slate-600">WEB_APP_URL</label>
-          <input id="apiUrl" class="input" value="">
-        </div>
-        <div>
-          <label class="text-xs text-slate-600">API_KEY</label>
-          <input id="apiKey" class="input" value="">
-        </div>
-      </div>
-      <div id="diag" class="mt-3 text-xs mono text-slate-600"></div>
-      <p class="mt-2 text-xs text-slate-500">Se o status falhar por CORS, verifique a URL/implantação. Este app já evita pré-flight no POST.</p>
-    </section>
 
     <!-- KPIs -->
     <section class="grid md:grid-cols-5 gap-3">
@@ -107,12 +79,12 @@
         </div>
       </div>
       <div class="card p-4">
-        <h3 class="font-semibold mb-2">Ações Aportadas do Mês</h3>
-        <div id="boxAcoesMes" class="text-sm text-slate-700">Sem dados.</div>
+        <h3 class="font-semibold mb-1">Ações Aportadas do Mês</h3>
+        <div id="boxAcoesMes" class="small text-slate-700">Sem dados.</div>
       </div>
       <div class="card p-4">
-        <h3 class="font-semibold mb-2">Opções Vendidas do Mês</h3>
-        <div id="boxOpcoesMes" class="text-sm text-slate-700">Sem dados.</div>
+        <h3 class="font-semibold mb-1">Opções Vendidas do Mês</h3>
+        <div id="boxOpcoesMes" class="small text-slate-700">Sem dados.</div>
       </div>
     </section>
 
@@ -229,7 +201,7 @@
   <main id="page-simulador" class="max-w-7xl mx-auto px-4 py-6 space-y-6 hidden">
     <section class="card p-6">
       <h2 class="text-lg font-semibold mb-2">Simulador</h2>
-      <p class="text-sm text-slate-600">(em construção) – defina aqui as regras de simulação que desejar que eu implemente.</p>
+      <p class="text-sm text-slate-600">(em construção)</p>
     </section>
   </main>
 
@@ -237,20 +209,23 @@
   <main id="page-ir" class="max-w-7xl mx-auto px-4 py-6 space-y-6 hidden">
     <section class="card p-6">
       <h2 class="text-lg font-semibold mb-2">Imposto de Renda</h2>
-      <p class="text-sm text-slate-600">(em construção) – se quiser, integro com o formulário de <b>IR (upsert)</b> que já existe no backend.</p>
+      <p class="text-sm text-slate-600">(em construção)</p>
     </section>
   </main>
 
-  <div id="toast" class="toast">ok</div>
-
   <script>
+    // ===== CONFIG FIXA (sem tela de configuração)
+    const API_URL = "https://script.google.com/macros/s/AKfycbyRpqe93H1IFKWQuJ8Eu_f3SnZGKnWIXUvizy_iAhmHlm5IuQj0Sf388E-S5cEN_7BbJw/exec";
+    const API_KEY = "Vc7@Rendimentos#2025!";
+
     // ===== Utils
     const qs = s => document.querySelector(s);
     const qsa = s => Array.from(document.querySelectorAll(s));
     const money = n => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(n||0));
     const pct   = n => (Number(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
-    const BR = (iso) => { if(!iso) return ''; const d = new Date(iso); if(isNaN(d)) return iso; const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yy=d.getFullYear(); return `${dd}/${mm}/${yy}`; };
-    function toast(msg){ const t=qs('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 1600); }
+    const BR = (iso) => { if(!iso) return ''; const d = new Date(iso); if(isNaN(d)) return String(iso).split('T')[0]; const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yy=d.getFullYear(); return `${dd}/${mm}/${yy}`; };
+    const toISO = (dmy) => { const m=/^\s*(\d{2})[\/\-](\d{2})[\/\-](\d{4})\s*$/.exec(dmy||''); if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`; };
+    const inMonth = (iso,y,m) => { const d=new Date(iso); return !isNaN(d) && d.getFullYear()===y && (d.getMonth()+1)===m; };
 
     // Tabs
     qsa('.tabs button').forEach(btn=>{
@@ -263,98 +238,27 @@
       });
     });
 
-    // Bloqueio de submit/href em formulários:
-    document.addEventListener('submit', (e)=>{ e.preventDefault(); e.stopPropagation(); }, true);
-
-    // ===== API cfg (força defaults na 1ª carga)
-    const DEFAULT_URL="https://script.google.com/macros/s/AKfycbyRpqe93H1IFKWQuJ8Eu_f3SnZGKnWIXUvizy_iAhmHlm5IuQj0Sf388E-S5cEN_7BbJw/exec";
-    const DEFAULT_KEY="Vc7@Rendimentos#2025!";
-
-    function forceDefaultsOnce(){
-      const savedUrl = localStorage.getItem('api.url');
-      if (!savedUrl || !savedUrl.includes("AKfycbyRpqe93H1I")) {
-        localStorage.setItem('api.url', DEFAULT_URL);
-        localStorage.setItem('api.key', DEFAULT_KEY);
-      }
-    }
-    function loadApiConfig(){
-      qs('#apiUrl').value = localStorage.getItem('api.url') || DEFAULT_URL;
-      qs('#apiKey').value = localStorage.getItem('api.key') || DEFAULT_KEY;
-      diag(`WEB_APP_URL em uso: ${qs('#apiUrl').value}`);
-    }
-    function saveApiConfig(){
-      localStorage.setItem('api.url', qs('#apiUrl').value.trim());
-      localStorage.setItem('api.key', qs('#apiKey').value.trim());
-      toast('Configuração salva.');
-      diag(`WEB_APP_URL em uso: ${qs('#apiUrl').value}`);
-    }
-    function resetApiConfig(){
-      localStorage.removeItem('api.url');
-      localStorage.removeItem('api.key');
-      loadApiConfig();
-      toast('Configuração resetada.');
-    }
-    function apiBase(){ return { url:qs('#apiUrl').value.trim(), key:qs('#apiKey').value.trim() }; }
-
-    // ===== Log/Diag na UI
-    function diag(msg){
-      const box = qs('#diag');
-      const now = new Date().toLocaleTimeString();
-      box.innerHTML = `<div>[${now}] ${msg}</div>` + box.innerHTML;
-      console.log('[DIAG]', msg);
-    }
-
-    // ===== API calls (POST sem pré-flight)
+    // ===== API
     async function apiGet(resource){
-      const {url,key}=apiBase();
-      diag('GET: ' + resource);
-      const r=await fetch(`${url}?resource=${encodeURIComponent(resource)}&key=${encodeURIComponent(key)}`);
-      const ct=r.headers.get('content-type')||'';
-      if(!ct.includes('application/json')){
-        const t=await r.text();
-        diag('GET não-JSON: ' + t.slice(0,120));
-        throw new Error('GET não-JSON (publique o Web App como "Qualquer pessoa").');
-      }
-      const j=await r.json(); if(!j.ok) throw new Error(j.error||'Falha'); return j.data||[];
+      const r = await fetch(`${API_URL}?resource=${encodeURIComponent(resource)}&key=${encodeURIComponent(API_KEY)}`);
+      const ct = r.headers.get('content-type')||'';
+      if(!ct.includes('application/json')) throw new Error('GET não-JSON. Verifique a implantação do Web App.');
+      const j = await r.json(); if(!j.ok) throw new Error(j.error||'Falha'); return j.data||[];
     }
     async function apiPost(body){
-      const {url,key}=apiBase();
-      diag('POST: ' + (body.action||''));
-      const r=await fetch(url,{
+      const r = await fetch(API_URL,{
         method:'POST',
-        headers:{'Content-Type':'text/plain;charset=utf-8'}, // evita pré-flight
-        body:JSON.stringify(Object.assign({key},body))
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify(Object.assign({key:API_KEY}, body))
       });
-      const ct=r.headers.get('content-type')||'';
-      if(!ct.includes('application/json')){
-        const t=await r.text();
-        diag('POST não-JSON: ' + t.slice(0,120));
-        throw new Error('POST não-JSON (ver implantação e URL).');
-      }
-      const j=await r.json(); if(!j.ok) throw new Error(j.error||'Falha'); return j.data;
+      const ct = r.headers.get('content-type')||'';
+      if(!ct.includes('application/json')) throw new Error('POST não-JSON. Verifique a implantação.');
+      const j = await r.json(); if(!j.ok) throw new Error(j.error||'Falha'); return j.data;
     }
 
-    // ===== Helpers
-    function toISO(dmy){
-      const m=/^\s*(\d{2})[\/\-](\d{2})[\/\-](\d{4})\s*$/.exec(dmy||'');
-      if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`;
-    }
-    function inMonth(iso, y, m){
-      if(!iso) return false;
-      const d = new Date(iso);
-      if(isNaN(d)) return false;
-      return d.getFullYear()===y && (d.getMonth()+1)===m;
-    }
-
-    // ===== Renders (preenchendo apenas TBODY)
-    function renderAportes(rows){
-      const tb=qs('#tbCarteira'); // carteira ainda placeholder
-    }
-    function renderCompras(rows){
-      // sem carteira consolidada por enquanto
-    }
+    // ===== Renders
     function renderOpcoes(opcoes){
-      const tb = qs('#tbOpcoes'); if(!tb) return;
+      const tb = qs('#tbOpcoes');
       if(!opcoes || !opcoes.length){ tb.innerHTML = `<tr><td colspan="9" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
       tb.innerHTML = opcoes.map(o => `
         <tr>
@@ -366,16 +270,13 @@
           <td>${BR(o.vencimento) || ''}</td>
           <td>${o.status ?? ''}</td>
           <td>${o.resultado ?? ''}</td>
-          <td><button data-cod="${o.codigo||''}" class="btn secondary text-xs btnEncerrar">Encerrar</button></td>
+          <td><button class="btn secondary text-xs" data-cod="${o.codigo||''}">Encerrar</button></td>
         </tr>
       `).join('');
-      qsa('.btnEncerrar').forEach(b=> b.addEventListener('click', onEncerrarClick));
-    }
-    function renderEncerr(rows){
-      // (mantém placeholder – preencher quando precisar)
+      qsa('#tbOpcoes button[data-cod]').forEach(b=> b.addEventListener('click', onEncerrar));
     }
     function renderExtrato(mensal){
-      const tb = qs('#tbExtrato'); if(!tb) return;
+      const tb = qs('#tbExtrato');
       if(!mensal || !mensal.length){ tb.innerHTML = `<tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
       tb.innerHTML = mensal.map(m => `
         <tr>
@@ -385,165 +286,108 @@
           <td>${pct(m['rend_%']||0)}</td>
           <td>${money(m.patrimonio||0)}</td>
         </tr>
-      }).join('');
+      `).join('');
     }
 
-    // ===== Dados globais (para cálculos)
+    // ===== Dados globais
     let DATA = { aportes:[], compras:[], opcoes:[], encerr:[], mensal:[] };
 
-    // ===== Dados + KPIs
-    async function reloadAll(){
-      try{
-        const [aportes, compras, opcoes, encerr, mensal] = await Promise.all([
-          apiGet('aportes'), apiGet('compras'), apiGet('opcoes'),
-          apiGet('encerr'), apiGet('mensal')
-        ]);
-        DATA = { aportes, compras, opcoes, encerr, mensal };
-
-        // KPIs OK + cálculos pedido
-        const now = new Date();
-        const y = now.getFullYear(), m = now.getMonth()+1;
-
-        const aporteMes = (aportes||[]).filter(a=>inMonth(a.data, y, m))
-                                       .reduce((s,a)=> s + Number(a.valor||0), 0);
-        const premioMes = (opcoes||[]).filter(o=>inMonth(o.data_venda, y, m))
-                                      .reduce((s,o)=> s + Number(o.premio||0), 0);
-        const resultadoMes = (encerr||[]).filter(e=>inMonth(e.data_fechamento, y, m))
-                                         .reduce((s,e)=> s + Number(e.resultado||0), 0);
-
-        qs('#kpiAporteMes').textContent = money(aporteMes);
-        qs('#kpiPremio').textContent = money(premioMes);
-        qs('#kpiResultado').textContent = money(resultadoMes);
-        // Rendimento % simples (ajuste a fórmula se quiser)
-        const baseSimples = aporteMes + premioMes + (resultadoMes>0?resultadoMes:0) || 1;
-        const rendPerc = (resultadoMes/baseSimples)*100;
-        qs('#kpiRendPerc').textContent = pct(rendPerc);
-
-        // Ações Aportadas do Mês (mostrar valor aportado)
-        qs('#boxAcoesMes').textContent = aporteMes>0 ? `Valor aportado no mês: ${money(aporteMes)}` : 'Sem dados.';
-
-        // Opções vendidas do mês (visível)
-        const doMes = (opcoes||[]).filter(o=>inMonth(o.data_venda, y, m));
-        qs('#boxOpcoesMes').innerHTML = doMes.length
-          ? doMes.map(o=>`${o.codigo} • ${o.subjacente} • Prêmio ${money(o.premio)} • Venc. ${BR(o.vencimento)}`).join('<br>')
-          : 'Sem dados.';
-
-        // Tabelas
-        renderOpcoes(opcoes);
-
-        // Extrato: render dados existentes (se houver)
-        renderExtrato(mensal);
-      }catch(err){
-        diag('reloadAll falhou: ' + err.message);
-        alert('Falha ao carregar dados: ' + err.message);
-      }
-    }
-
-    // ===== Encerrar Opção
-    async function onEncerrarClick(e){
+    // ===== Encerrar opção
+    async function onEncerrar(e){
       e.preventDefault();
-      const cod = e.currentTarget.getAttribute('data-cod');
+      const cod = e.currentTarget.dataset.cod;
       const data_fechamento = prompt('Data de fechamento (dd/mm/aaaa):'); if(!data_fechamento) return;
       const preco_acao = Number(prompt('Preço da ação (R$):')||0);
       const custo_fechar = Number(prompt('Custo para recomprar/encerrar (R$):')||0);
       const taxas = Number(prompt('Taxas (R$):')||0);
       const resultado = Number(prompt('Resultado líquido (R$):')||0);
-      const payload = { action:'encerrar/create', codigo: cod, data_fechamento: toISO(data_fechamento), preco_acao, custo_fechar, taxas, status_final:'Encerrada', resultado };
-      try{ await apiPost(payload); toast('Encerramento registrado.'); reloadAll(); } catch(err){ toast('Erro: '+err.message); }
+      await apiPost({ action:'encerrar/create', codigo: cod, data_fechamento: toISO(data_fechamento), preco_acao, custo_fechar, taxas, status_final:'Encerrada', resultado });
+      await reloadAll();
+      alert('Encerramento registrado!');
     }
 
-    // ===== Extrato Mensal (calcular + aplicar)
-    let ultimoCalculoMensal = null;
+    // ===== KPI + Cards
+    function updateCardsAndKpis(){
+      const now = new Date(); const y = now.getFullYear(); const m = now.getMonth()+1;
+      const aporteMes = (DATA.aportes||[]).filter(a=>inMonth(a.data,y,m)).reduce((s,a)=>s+Number(a.valor||0),0);
+      const premioMes = (DATA.opcoes||[]).filter(o=>inMonth(o.data_venda,y,m)).reduce((s,o)=>s+Number(o.premio||0),0);
+      const resultadoMes = (DATA.encerr||[]).filter(e=>inMonth(e.data_fechamento,y,m)).reduce((s,e)=>s+Number(e.resultado||0),0);
+
+      qs('#kpiAporteMes').textContent = money(aporteMes);
+      qs('#kpiPremio').textContent = money(premioMes);
+      qs('#kpiResultado').textContent = money(resultadoMes);
+      qs('#kpiSaldo').textContent = money(aporteMes); // placeholder
+
+      const base = Math.max(1, aporteMes + premioMes + Math.max(0,resultadoMes));
+      qs('#kpiRendPerc').textContent = pct((resultadoMes/base)*100);
+
+      // Ações Aportadas do Mês
+      qs('#boxAcoesMes').textContent = aporteMes>0 ? `Valor aportado no mês: ${money(aporteMes)}` : 'Sem dados.';
+
+      // Opções vendidas do mês
+      const doMes = (DATA.opcoes||[]).filter(o=>inMonth(o.data_venda,y,m));
+      qs('#boxOpcoesMes').innerHTML = doMes.length
+        ? doMes.map(o=>`${o.codigo} • ${o.subjacente} • Prêmio ${money(o.premio)} • Venc. ${BR(o.vencimento)}`).join('<br>')
+        : 'Sem dados.';
+    }
+
+    // ===== Extrato mensal (calcular + aplicar)
     function calcularMensalLocal(ano, mes){
-      const aporte = (DATA.aportes||[]).filter(a=>inMonth(a.data, ano, mes))
-                        .reduce((s,a)=> s + Number(a.valor||0), 0);
-      const rendPremios = (DATA.opcoes||[]).filter(o=>inMonth(o.data_venda, ano, mes))
-                          .reduce((s,o)=> s + Number(o.premio||0), 0);
-      const resultados = (DATA.encerr||[]).filter(e=>inMonth(e.data_fechamento, ano, mes))
-                          .reduce((s,e)=> s + Number(e.resultado||0), 0);
-      const rend_r$ = rendPremios + resultados;
-      // Fórmula simples para % (ajuste se quiser)
-      const base = Math.max(1, aporte + rendPremios);
-      const rend_% = (rend_r$ / base) * 100;
-      const patrimonio = aporte + rend_r$; // placeholder (defina fórmula que preferir)
-
-      return { ano, mes, aporte, "rend_r$": rend_r$, "rend_%": rend_% , patrimonio };
+      const aporte = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes)).reduce((s,a)=>s+Number(a.valor||0),0);
+      const premios = (DATA.opcoes||[]).filter(o=>inMonth(o.data_venda,ano,mes)).reduce((s,o)=>s+Number(o.premio||0),0);
+      const resultados = (DATA.encerr||[]).filter(e=>inMonth(e.data_fechamento,ano,mes)).reduce((s,e)=>s+Number(e.resultado||0),0);
+      const rend_rs = premios + resultados;
+      const base = Math.max(1, aporte + premios);
+      const rend_pct = (rend_rs/base)*100;
+      const patrimonio = aporte + rend_rs; // ajuste se quiser outra fórmula
+      return { ano, mes, aporte, "rend_r$":rend_rs, "rend_%":rend_pct, patrimonio };
     }
-
-    qs('#btnBuscarExtrato').addEventListener('click', (e)=>{
-      e.preventDefault();
+    let ultimoCalc = null;
+    qs('#btnBuscarExtrato').addEventListener('click', ()=>{
       const ano = Number(qs('#exAno').value || new Date().getFullYear());
       const mes = Number(qs('#exMes').value || (new Date().getMonth()+1));
-      ultimoCalculoMensal = calcularMensalLocal(ano, mes);
-      renderExtrato([ultimoCalculoMensal]);
+      ultimoCalc = calcularMensalLocal(ano,mes);
+      renderExtrato([ultimoCalc]);
+    });
+    qs('#btnAplicarExtrato').addEventListener('click', async ()=>{
+      if(!ultimoCalc){ alert('Clique em Buscar antes de Aplicar.'); return; }
+      await apiPost({ action:'mensal/upsert', ...ultimoCalc });
+      alert('Mensal aplicado!');
+      await reloadAll();
     });
 
-    qs('#btnAplicarExtrato').addEventListener('click', async (e)=>{
-      e.preventDefault();
-      if(!ultimoCalculoMensal){ toast('Clique em Buscar antes de Aplicar.'); return; }
-      const m = ultimoCalculoMensal;
-      try{
-        await apiPost({ action:'mensal/upsert', ano:m.ano, mes:m.mes, aporte:m.aporte, "rend_r$":m["rend_r$"], "rend_%":m["rend_%"], patrimonio:m.patrimonio });
-        toast('Mensal aplicado!');
-        reloadAll();
-      }catch(err){ toast('Erro: '+err.message); }
-    });
-
-    // ===== Eventos UI config
-    qs('#btnSaveApi').addEventListener('click', (e)=>{ e.preventDefault(); saveApiConfig(); });
-    qs('#btnResetApi').addEventListener('click', (e)=>{ e.preventDefault(); resetApiConfig(); });
-    qs('#btnTestApi').addEventListener('click', async (e)=>{
-      e.preventDefault();
-      try{
-        const data = await apiGet('status');
-        diag('STATUS OK: ' + JSON.stringify(data));
-        alert('Status OK. Conexão estabelecida.');
-      }catch(err){
-        diag('STATUS ERRO: ' + err.message);
-        alert('Status ERRO: ' + err.message);
-      }
-    });
-
-    // ===== Formulários (Aporte/Compra/Opção)
-    qs('#btnAddAporte').addEventListener('click', async (e)=>{
-      e.preventDefault();
+    // ===== Formulários
+    qs('#btnAddAporte').addEventListener('click', async ()=>{
       const data  = toISO(qs('#aporteData').value);
-      const valor = Number(qs('#aporteValor').value || 0);
-      const obs   = qs('#aporteObs').value || '';
-      if (!data || !valor){ alert('Informe data e valor.'); return; }
-      try{
-        await apiPost({ action:'aportes/create', data, valor, observacao: obs });
-        toast('Aporte salvo!'); ['#aporteData','#aporteValor','#aporteObs'].forEach(id=>qs(id).value='');
-        reloadAll();
-      }catch(err){ alert('Erro ao salvar: '+err.message); }
+      const valor = Number(qs('#aporteValor').value||0);
+      const observacao = qs('#aporteObs').value||'';
+      if(!data || !valor){ alert('Informe data e valor.'); return; }
+      await apiPost({ action:'aportes/create', data, valor, observacao });
+      qs('#aporteData').value=''; qs('#aporteValor').value=''; qs('#aporteObs').value='';
+      await reloadAll();
+      alert('Aporte salvo!');
     });
-
-    qs('#btnAddCompra').addEventListener('click', async (e)=>{
-      e.preventDefault();
+    qs('#btnAddCompra').addEventListener('click', async ()=>{
       const ticker=qs('#compraTicker').value.trim();
-      const preco =Number(qs('#compraPreco').value || 0);
-      const qtde  =Number(qs('#compraQtde').value || 0);
+      const preco =Number(qs('#compraPreco').value||0);
+      const qtde  =Number(qs('#compraQtde').value||0);
       const data  =toISO(qs('#compraData').value);
-      if(!ticker||!qtde||!preco||!data){ alert('Preencha todos os campos da compra.'); return; }
-      try{
-        await apiPost({ action:'compras/create', data, ticker, qtde, preco });
-        toast('Compra salva!'); ['#compraTicker','#compraPreco','#compraQtde','#compraData'].forEach(id=>qs(id).value='');
-        reloadAll();
-      }catch(err){ alert('Erro ao salvar: '+err.message); }
+      if(!ticker||!preco||!qtde||!data){ alert('Preencha todos os campos.'); return; }
+      await apiPost({ action:'compras/create', data, ticker, qtde, preco });
+      ['#compraTicker','#compraPreco','#compraQtde','#compraData'].forEach(id=>qs(id).value='');
+      await reloadAll();
+      alert('Compra salva!');
     });
-
-    qs('#btnAddOpcao').addEventListener('click', async (e)=>{
-      e.preventDefault();
+    qs('#btnAddOpcao').addEventListener('click', async ()=>{
       const sub=qs('#opSubj').value.trim(), cod=qs('#opCodigo').value.trim();
       const qtde=Number(qs('#opQtde').value||0), strike=Number(qs('#opStrike').value||0);
       const premio=Number(qs('#opPremio').value||0);
       const dv=toISO(qs('#opDataVenda').value), venc=toISO(qs('#opVenc').value);
-      if(!sub||!cod||!qtde||!strike||!premio||!dv||!venc){ alert('Preencha todos os campos da opção.'); return; }
-      try{
-        await apiPost({ action:'opcoes/create', data_venda:dv, vencimento:venc, subjacente:sub, codigo:cod, qtde, strike, premio, status:'Aberta', resultado:0 });
-        toast('Opção registrada!'); ['#opSubj','#opCodigo','#opQtde','#opStrike','#opPremio','#opDataVenda','#opVenc'].forEach(id=>qs(id).value='');
-        reloadAll();
-      }catch(err){ alert('Erro ao salvar: '+err.message); }
+      if(!sub||!cod||!qtde||!strike||!premio||!dv||!venc){ alert('Preencha todos os campos.'); return; }
+      await apiPost({ action:'opcoes/create', data_venda:dv, vencimento:venc, subjacente:sub, codigo:cod, qtde, strike, premio, status:'Aberta', resultado:0 });
+      ['#opSubj','#opCodigo','#opQtde','#opStrike','#opPremio','#opDataVenda','#opVenc'].forEach(id=>qs(id).value='');
+      await reloadAll();
+      alert('Opção registrada!');
     });
 
     // Ciclo – 3ª sexta
@@ -552,24 +396,29 @@
       while(d.getMonth()===mes-1){ if(d.getDay()===5) sextas.push(new Date(d)); d.setDate(d.getDate()+1); }
       return sextas[2] || sextas[1] || sextas[0];
     }
-    qs('#btnCalcCiclo').addEventListener('click',(e)=>{
-      e.preventDefault();
+    qs('#btnCalcCiclo').addEventListener('click', ()=>{
       const mes=Number(qs('#cicloMes').value||'1'), ano=Number(qs('#cicloAno').value||new Date().getFullYear());
       const dt=terceiraSexta(ano,mes); if(!dt){ qs('#cicloVenc').textContent='–'; return; }
       const dd=String(dt.getDate()).padStart(2,'0'), mm=String(dt.getMonth()+1).padStart(2,'0'), yyyy=dt.getFullYear();
       qs('#cicloVenc').textContent=`${dd}/${mm}/${yyyy}`;
     });
-    qs('#btnAplicarCiclo').addEventListener('click',(e)=>{
-      e.preventDefault();
+    qs('#btnAplicarCiclo').addEventListener('click', ()=>{
       const v=qs('#cicloVenc').textContent.trim();
       if(!/^\d{2}\/\d{2}\/\d{4}$/.test(v)){ alert('Calcule o vencimento primeiro.'); return; }
-      qs('#opVenc').value=v; toast('Vencimento aplicado no formulário de Opções.');
+      qs('#opVenc').value=v; alert('Vencimento aplicado no formulário de Opções.');
     });
 
-    // ===== Init
-    forceDefaultsOnce();
-    loadApiConfig();
-    diag('Iniciado. URL atual: ' + (qs('#apiUrl').value));
+    // ===== Load
+    async function reloadAll(){
+      const [aportes, compras, opcoes, encerr, mensal] = await Promise.all([
+        apiGet('aportes'), apiGet('compras'), apiGet('opcoes'),
+        apiGet('encerr'), apiGet('mensal')
+      ]);
+      DATA = { aportes, compras, opcoes, encerr, mensal };
+      renderOpcoes(opcoes);
+      renderExtrato(mensal);
+      updateCardsAndKpis();
+    }
     reloadAll();
   </script>
 </body>
