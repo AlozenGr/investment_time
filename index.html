@@ -255,10 +255,27 @@
     const qsa = s => Array.from(document.querySelectorAll(s));
     const money = n => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(n||0));
     const pct   = n => (Number(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+
+    // >>> Conversor robusto BR → Number (corrige "6.192,00", "3,87", "4300", etc)
+    function toNum(x){
+      if (typeof x === 'number') return isFinite(x) ? x : 0;
+      if (x == null) return 0;
+      let s = String(x).trim();
+      if (!s) return 0;
+      // Formatos BR com milhar e decimal: 9.999,99
+      if (/^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(s)) {
+        s = s.replace(/\./g,'').replace(',', '.');
+      } else if (/^-?\d+,\d+$/.test(s)) { // 999,99
+        s = s.replace(',', '.');
+      }
+      const n = Number(s);
+      return isFinite(n) ? n : 0;
+    }
+
     function normalizeISO(x){ if(!x) return null; const s=String(x); const clean = s.length>=10 ? s.substring(0,10) : s; const d = new Date(clean+'T00:00:00'); return isNaN(d)? null : d; }
     function inMonth(dateLike, ano, mes){ const d=normalizeISO(dateLike); return !!d && d.getFullYear()===Number(ano) && (d.getMonth()+1)===Number(mes); }
     function BR(dateLike){ const d=normalizeISO(dateLike); if(!d) return ''; const dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yy=d.getFullYear(); return `${dd}/${mm}/${yy}`; }
-    function toISO(dmy){ const m=/^(\\d{2})[\\/\\-](\\d{2})[\\/\\-](\\d{4})$/.exec(String(dmy||'')); if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`; }
+    function toISO(dmy){ const m=/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/.exec(String(dmy||'')); if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`; }
 
     // ===== Navegação
     qsa('.tabs button').forEach(btn=>btn.addEventListener('click',()=>showPage(btn.dataset.page)));
@@ -287,7 +304,7 @@
       try {
         const prices = await apiGet('prices'); // [{ticker, price, time}]
         PRICE_MAP = {};
-        (prices||[]).forEach(p => { PRICE_MAP[String(p.ticker||'').toUpperCase()] = Number(p.price||0); });
+        (prices||[]).forEach(p => { PRICE_MAP[String(p.ticker||'').toUpperCase()] = toNum(p.price); });
       } catch(e) {
         console.warn('Falha ao obter preços:', e);
       }
@@ -300,13 +317,15 @@
         const k = String(c.ticker||'').toUpperCase();
         let x = acc.find(a => a.ticker===k);
         if(!x){ x = { ticker:k, qtde:0, precoMedio:0, precoAtual:0, vm:0 }; acc.push(x); }
-        const qtd = Number(c.qtde||0), pr = Number(c.preco||0);
+        const qtd = toNum(c.qtde);
+        const pr  = toNum(c.preco);
         const custo = qtd * pr, qtdAnt = x.qtde;
         x.qtde += qtd;
         x.precoMedio = ((x.precoMedio * qtdAnt) + custo) / Math.max(1, x.qtde);
-        x.precoAtual = PRICE_MAP[k] || x.precoAtual || pr;
+        const last = toNum(PRICE_MAP[k]);
+        x.precoAtual = last > 0 ? last : (x.precoAtual || pr || 0);
       });
-      acc.forEach(x => { x.vm = x.qtde * (x.precoAtual||0); });
+      acc.forEach(x => { x.vm = x.qtde * x.precoAtual; });
       return acc;
     }
 
@@ -319,18 +338,18 @@
       tb.innerHTML = carteira.map(a => `
         <tr>
           <td>${a.ticker}</td>
-          <td>${a.qtde}</td>
+          <td>${toNum(a.qtde)}</td>
           <td>${money(a.precoMedio)}</td>
           <td>${money(a.precoAtual)}</td>
           <td>${money(a.vm)}</td>
-          <td>${a.qtde}</td>
+          <td>${toNum(a.qtde)}</td>
         </tr>
       `).join('');
     }
 
     function updatePatrimonioAndKPIs(){
       const carteira = buildCarteiraFromCompras(DATA.compras||[]);
-      const vmCarteira = carteira.reduce((s,a)=> s + (a.vm||0), 0);
+      const vmCarteira = carteira.reduce((s,a)=> s + toNum(a.vm), 0);
 
       // KPIs
       document.getElementById('kpiSaldo').textContent = money(vmCarteira);
@@ -357,12 +376,12 @@
           <tr>
             <td>${o.subjacente||''}</td>
             <td>${o.codigo||''}</td>
-            <td>${o.qtde||''}</td>
-            <td>${o.strike||''}</td>
-            <td>${o.premio||''}</td>
+            <td>${toNum(o.qtde)}</td>
+            <td>${money(toNum(o.strike))}</td>
+            <td>${money(toNum(o.premio))}</td>
             <td>${BR(o.vencimento)||''}</td>
             <td>${o.status||''}</td>
-            <td>${o.resultado||''}</td>
+            <td>${money(toNum(o.resultado))}</td>
             <td class="flex gap-1">${acoes}</td>
           </tr>`;
       }).join('');
@@ -374,19 +393,19 @@
           const act = e.currentTarget.dataset.act;
           let status_final='Encerrada', resultado=0, preco_acao=0, custo_fechar=0, taxas=0;
           if(act==='fechar'){
-            preco_acao = Number(prompt('Preço da ação para fechamento (R$):')||0);
-            custo_fechar = Number(prompt('Custo para recomprar/fechar (R$):')||0);
-            taxas = Number(prompt('Taxas (R$):')||0);
-            resultado = Number(prompt('Resultado líquido (R$):')||0);
+            preco_acao = toNum(prompt('Preço da ação para fechamento (R$):')||0);
+            custo_fechar = toNum(prompt('Custo para recomprar/fechar (R$):')||0);
+            taxas = toNum(prompt('Taxas (R$):')||0);
+            resultado = toNum(prompt('Resultado líquido (R$):')||0);
             status_final = 'Encerrada';
           }else if(act==='exercida'){
-            preco_acao = Number(prompt('Preço da ação no vencimento (R$):')||0);
-            taxas = Number(prompt('Taxas (R$):')||0);
-            resultado = Number(prompt('Resultado líquido após execução (R$):')||0);
+            preco_acao = toNum(prompt('Preço da ação no vencimento (R$):')||0);
+            taxas = toNum(prompt('Taxas (R$):')||0);
+            resultado = toNum(prompt('Resultado líquido após execução (R$):')||0);
             status_final = 'Exercida';
           }else{ // não exercida
-            taxas = Number(prompt('Taxas (R$):')||0);
-            resultado = Number(prompt('Resultado líquido (R$):')||0);
+            taxas = toNum(prompt('Taxas (R$):')||0);
+            resultado = toNum(prompt('Resultado líquido (R$):')||0);
             status_final = 'Não Exercida';
           }
           const data_fechamento = new Date().toISOString().substring(0,10);
@@ -403,10 +422,10 @@
       tb.innerHTML = mensal.map(m=>`
         <tr>
           <td>${String(m.mes).padStart(2,'0')}/${m.ano}</td>
-          <td>${money(m.aporte||0)}</td>
-          <td>${money(m['rend_r$']||0)}</td>
-          <td>${pct(m['rend_%']||0)}</td>
-          <td>${money(m.patrimonio||0)}</td>
+          <td>${money(toNum(m.aporte))}</td>
+          <td>${money(toNum(m['rend_r$']))}</td>
+          <td>${pct(toNum(m['rend_%']))}</td>
+          <td>${money(toNum(m.patrimonio))}</td>
         </tr>`).join('');
     }
 
@@ -421,15 +440,15 @@
     function monthKey(ano, mes){ return `${ano}-${String(mes).padStart(2,'0')}`; }
     function buildMonthlyAggFromRaw(){
       const map = new Map();
-      function add(key, field, v){ const o = map.get(key) || {ano:+key.split('-')[0], mes:+key.split('-')[1], aporte:0, premio:0, resultado:0}; o[field]+=Number(v||0); map.set(key,o); }
+      function add(key, field, v){ const o = map.get(key) || {ano:+key.split('-')[0], mes:+key.split('-')[1], aporte:0, premio:0, resultado:0}; o[field]+=toNum(v||0); map.set(key,o); }
       (DATA.aportes||[]).forEach(a=>{ const d=normalizeISO(a.data); if(d){ add(monthKey(d.getFullYear(), d.getMonth()+1), 'aporte', a.valor); } });
       (DATA.opcoes||[]).forEach(o=>{ const d=normalizeISO(o.data_venda); if(d){ add(monthKey(d.getFullYear(), d.getMonth()+1), 'premio', o.premio); } });
       (DATA.encerr||[]).forEach(e=>{ const d=normalizeISO(e.data_fechamento); if(d){ add(monthKey(d.getFullYear(), d.getMonth()+1), 'resultado', e.resultado); } });
       const arr = Array.from(map.values()).sort((a,b)=> a.ano===b.ano ? a.mes-b.mes : a.ano-b.ano);
-      return arr.map(x=>({ ...x, rend_rs: x.premio + x.resultado, rend_pct: ((x.premio+x.resultado)/Math.max(1, x.aporte + x.premio))*100, patrimonio: x.aporte + x.premio + x.resultado }));
+      return arr.map(x=>({ ...x, rend_rs: toNum(x.premio) + toNum(x.resultado), rend_pct: ((toNum(x.premio)+toNum(x.resultado))/Math.max(1, toNum(x.aporte) + toNum(x.premio)))*100, patrimonio: toNum(x.aporte) + toNum(x.premio) + toNum(x.resultado) }));
     }
     function buildMonthlyFromMensal(){
-      return (DATA.mensal||[]).map(m=>({ ano:+m.ano, mes:+m.mes, aporte:+(m.aporte||0), rend_rs:+(m['rend_r$']||0), rend_pct:+(m['rend_%']||0), patrimonio:+(m.patrimonio||0), premio:0, resultado:0 }))
+      return (DATA.mensal||[]).map(m=>({ ano:+m.ano, mes:+m.mes, aporte:toNum(m.aporte), rend_rs:toNum(m['rend_r$']), rend_pct:toNum(m['rend_%']), patrimonio:toNum(m.patrimonio), premio:0, resultado:0 }))
         .sort((a,b)=> a.ano===b.ano ? a.mes-b.mes : a.ano-b.ano);
     }
     function drawCharts(){
@@ -439,7 +458,7 @@
       if(!rows.length) return;
 
       const labels = rows.map(r=> `${String(r.mes).padStart(2,'0')}/${r.ano}`);
-      const patrimonio = rows.map(r => r.patrimonio || (r.aporte + r.rend_rs));
+      const patrimonio = rows.map(r => toNum(r.patrimonio) || (toNum(r.aporte) + toNum(r.rend_rs)));
 
       charts.patrimonio = new Chart(document.getElementById('chartPatrimonio').getContext('2d'),{
         type:'line',
@@ -449,17 +468,17 @@
 
       charts.aportes = new Chart(document.getElementById('chartAportes').getContext('2d'),{
         type:'bar',
-        data:{ labels, datasets:[{ label:'Aportes', data: rows.map(r=>r.aporte) }]},
+        data:{ labels, datasets:[{ label:'Aportes', data: rows.map(r=>toNum(r.aporte)) }]},
         options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
       });
 
       charts.resultado = new Chart(document.getElementById('chartResultado').getContext('2d'),{
         type:'bar',
-        data:{ labels, datasets:[{ label:'Resultado do Ciclo', data: rows.map(r=> (r.rend_rs ?? (r.premio + r.resultado))) } ]},
+        data:{ labels, datasets:[{ label:'Resultado do Ciclo', data: rows.map(r=> toNum(r.rend_rs)) } ]},
         options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
       });
 
-      // Botões de download (PNG/CSV) apenas dos 3 gráficos
+      // Botões de download
       document.querySelectorAll('[data-dl]').forEach(btn=>{
         btn.onclick = ()=>{
           const id = btn.getAttribute('data-dl');
@@ -497,15 +516,14 @@
       const opcoesMes  = (DATA.opcoes ||[]).filter(o=> inMonth(o.data_venda,ano,mes) || inMonth(o.vencimento,ano,mes) );
       const encerrMes  = (DATA.encerr ||[]).filter(e=>inMonth(e.data_fechamento,ano,mes));
 
-      const somaAporte = aportesMes.reduce((s,a)=> s + Number(a.valor||0), 0);
-      const somaPremio = opcoesMes.reduce((s,o)=> s + Number(o.premio||0), 0);
-      const somaResEnc = encerrMes.reduce((s,e)=> s + Number(e.resultado||0), 0);
+      const somaAporte = aportesMes.reduce((s,a)=> s + toNum(a.valor), 0);
+      const somaPremio = opcoesMes.reduce((s,o)=> s + toNum(o.premio), 0);
+      const somaResEnc = encerrMes.reduce((s,e)=> s + toNum(e.resultado), 0);
 
       const resultadoCiclo = somaPremio + somaResEnc;
       const base = Math.max(1, somaAporte + somaPremio);
       const rendimentoMesPct = (resultadoCiclo / base) * 100;
 
-      // KPIs não ligados a preço
       qs('#kpiAporteMes').textContent = money(somaAporte);
       qs('#kpiPremio').textContent    = money(somaPremio);
       qs('#kpiResultado').textContent = money(resultadoCiclo);
@@ -514,7 +532,7 @@
       // Cards
       qs('#boxAcoesMes').textContent = somaAporte>0 ? `Valor aportado no mês: ${money(somaAporte)}` : 'Sem dados.';
       qs('#boxOpcoesMes').innerHTML = opcoesMes.length
-        ? opcoesMes.map(o=>`${o.codigo} • ${o.subjacente} • Prêmio ${money(o.premio)} • Venc. ${BR(o.vencimento)}`).join('<br>')
+        ? opcoesMes.map(o=>`${o.codigo} • ${o.subjacente} • Prêmio ${money(toNum(o.premio))} • Venc. ${BR(o.vencimento)}`).join('<br>')
         : 'Sem dados.';
 
       // Linha “automática” no extrato do mês/ano de referência
@@ -535,9 +553,9 @@
     // ===== Extrato (buscar/aplicar específicos)
     let ultimoCalc = null;
     function calcularMensalLocal(ano, mes){
-      const aporte = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes)).reduce((s,a)=>s+Number(a.valor||0),0);
-      const premios= (DATA.opcoes ||[]).filter(o=>inMonth(o.data_venda,ano,mes)).reduce((s,o)=>s+Number(o.premio||0),0);
-      const resultados=(DATA.encerr||[]).filter(e=>inMonth(e.data_fechamento,ano,mes)).reduce((s,e)=>s+Number(e.resultado||0),0);
+      const aporte = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes)).reduce((s,a)=>s+toNum(a.valor),0);
+      const premios= (DATA.opcoes ||[]).filter(o=>inMonth(o.data_venda,ano,mes)).reduce((s,o)=>s+toNum(o.premio),0);
+      const resultados=(DATA.encerr||[]).filter(e=>inMonth(e.data_fechamento,ano,mes)).reduce((s,e)=>s+toNum(e.resultado),0);
       const rend_rs = premios + resultados;
       const base = Math.max(1, aporte + premios);
       const rend_pct = (rend_rs/base)*100;
@@ -568,7 +586,7 @@
     // ===== Formulários
     qs('#btnAddAporte').addEventListener('click', async ()=>{
       const data  = toISO(qs('#aporteData').value);
-      const valor = Number(qs('#aporteValor').value||0);
+      const valor = toNum(qs('#aporteValor').value);
       const observacao = qs('#aporteObs').value||'';
       if(!data || !valor){ alert('Informe data e valor.'); return; }
       await apiPost({ action:'aportes/create', data, valor, observacao });
@@ -578,8 +596,8 @@
     });
     qs('#btnAddCompra').addEventListener('click', async ()=>{
       const ticker=qs('#compraTicker').value.trim();
-      const preco =Number(qs('#compraPreco').value||0);
-      const qtde  =Number(qs('#compraQtde').value||0);
+      const preco =toNum(qs('#compraPreco').value);
+      const qtde  =toNum(qs('#compraQtde').value);
       const data  =toISO(qs('#compraData').value);
       if(!ticker||!preco||!qtde||!data){ alert('Preencha todos os campos.'); return; }
       await apiPost({ action:'compras/create', data, ticker, qtde, preco });
@@ -589,8 +607,8 @@
     });
     qs('#btnAddOpcao').addEventListener('click', async ()=>{
       const sub=qs('#opSubj').value.trim(), cod=qs('#opCodigo').value.trim();
-      const qtde=Number(qs('#opQtde').value||0), strike=Number(qs('#opStrike').value||0);
-      const premio=Number(qs('#opPremio').value||0);
+      const qtde=toNum(qs('#opQtde').value), strike=toNum(qs('#opStrike').value);
+      const premio=toNum(qs('#opPremio').value);
       const dv=toISO(qs('#opDataVenda').value), venc=toISO(qs('#opVenc').value);
       if(!sub||!cod||!qtde||!strike||!premio||!dv||!venc){ alert('Preencha todos os campos.'); return; }
       await apiPost({ action:'opcoes/create', data_venda:dv, vencimento:venc, subjacente:sub, codigo:cod, qtde, strike, premio, status:'Aberta', resultado:0 });
@@ -630,12 +648,12 @@
       } catch(e){ console.warn('refresh preco', e); }
     }, 60000);
 
-    // Exportar CSV dos dados Mensal (ou calculado de bruto)
+    // Exportar CSV
     qs('#btnExportCsv').addEventListener('click', ()=>{
       const rows = DATA.mensal && DATA.mensal.length ? DATA.mensal : buildMonthlyAggFromRaw().map(r=>({ano:r.ano,mes:r.mes,aporte:r.aporte,"rend_r$":r.rend_rs,"rend_%":r.rend_pct,patrimonio:r.patrimonio}));
       if(!rows.length){ alert('Sem dados para exportar.'); return; }
       let csv = 'ano,mes,aporte,rend_r$,rend_%,patrimonio\n';
-      rows.forEach(r=>{ csv += `${r.ano},${r.mes},${r.aporte},${r["rend_r$"]||r.rend_rs},${r["rend_%"]||r.rend_pct},${r.patrimonio}\n`; });
+      rows.forEach(r=>{ csv += `${r.ano},${r.mes},${toNum(r.aporte)},${toNum(r["rend_r$"])||toNum(r.rend_rs)},${toNum(r["rend_%"])||toNum(r.rend_pct)},${toNum(r.patrimonio)}\n`; });
       const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob); const a=document.createElement('a');
       a.href=url; a.download='mensal.csv'; a.click(); URL.revokeObjectURL(url);
