@@ -76,11 +76,47 @@
 
     <!-- KPIs -->
     <section class="grid md:grid-cols-5 gap-3">
-      <div class="card p-4 kpi"><div class="text-xs text-slate-500">Saldo Atual</div><div class="v" id="kpiSaldo">R$ 0,00</div><div class="text-[11px] text-slate-500">Valor de mercado da carteira</div></div>
+      <div class="card p-4 kpi"><div class="text-xs text-slate-500">Saldo Atual</div><div class="v" id="kpiSaldo">R$ 0,00</div><div class="text-[11px] text-slate-500">VM Ações − MM Opções + Caixa</div></div>
       <div class="card p-4 kpi"><div class="text-xs text-slate-500">Aportes no Mês</div><div class="v" id="kpiAporteMes">R$ 0,00</div><div class="text-[11px] text-slate-500">Somente mês/ano em referência</div></div>
       <div class="card p-4 kpi"><div class="text-xs text-slate-500">Rendimento no Mês (%)</div><div class="v" id="kpiRendPerc">0,00%</div><div class="text-[11px] text-slate-500">cálculo: (Prêmios + Resultados) / (Aportes + Prêmios)</div></div>
       <div class="card p-4 kpi"><div class="text-xs text-slate-500">Prêmio no Ciclo</div><div class="v" id="kpiPremio">R$ 0,00</div><div class="text-[11px] text-slate-500">Somente mês/ano em referência</div></div>
       <div class="card p-4 kpi"><div class="text-xs text-slate-500">Resultado no Ciclo</div><div class="v" id="kpiResultado">R$ 0,00</div><div class="text-[11px] text-slate-500">Prêmios + Resultados (mês)</div></div>
+    </section>
+
+    <!-- Caixa e MM Opções -->
+    <section class="grid md:grid-cols-2 gap-3">
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-500">Saldo em Conta</div>
+            <div class="v font-extrabold text-lg" id="kpiCaixa">R$ 0,00</div>
+            <div class="text-[11px] text-slate-500">Somado no Patrimônio</div>
+          </div>
+          <div class="text-right">
+            <label class="text-xs text-slate-500 block mb-1">Editar</label>
+            <div class="flex items-center gap-2">
+              <input id="inputCaixa" type="number" step="0.01" class="input w-40" placeholder="R$">
+              <button id="btnSalvarCaixa" class="btn secondary text-xs">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-500">MM Opções Abertas (obrigações)</div>
+            <div class="v font-extrabold text-lg" id="kpiMtmOp">R$ 0,00</div>
+            <div class="text-[11px] text-slate-500">Subtraído do Patrimônio</div>
+          </div>
+          <div class="text-right">
+            <label class="text-xs text-slate-500 block mb-1">Editar</label>
+            <div class="flex items-center gap-2">
+              <input id="inputMtmOp" type="number" step="0.01" class="input w-40" placeholder="R$">
+              <button id="btnSalvarMtmOp" class="btn secondary text-xs">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- Gráficos (somente os 3 principais) -->
@@ -256,45 +292,38 @@
     const money = n => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(n||0));
     const pct   = n => (Number(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
 
-    // Conversor BR -> Number
     function toNum(x){
       if (typeof x === 'number') return isFinite(x) ? x : 0;
       if (x == null) return 0;
       let s = String(x).trim();
       if (!s) return 0;
-      if (/^-?\\d{1,3}(\\.\\d{3})*(,\\d+)?$/.test(s)) {
-        s = s.replace(/\\./g,'').replace(',', '.');
-      } else if (/^-?\\d+,\\d+$/.test(s)) {
+      if (/^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(s)) {
+        s = s.replace(/\./g,'').replace(',', '.');
+      } else if (/^-?\d+,\d+$/.test(s)) {
         s = s.replace(',', '.');
       }
       const n = Number(s);
       return isFinite(n) ? n : 0;
     }
-
-    // Corrige casos "6.192,00" que devem ser 6.192 (ponto decimal)
     function toPrice(x){
       const raw = (x==null) ? '' : String(x).trim();
       let n = toNum(raw);
       if (n > 1000 && raw.includes('.') && raw.includes(',')) {
-        // Tenta interpretar o ponto como decimal (remove vírgula)
         const alt = Number(raw.replace(/,/g,''));
         if (isFinite(alt) && alt < 1000) return alt;
       }
       return n;
     }
-
-    // Se "preco" de compra vier como TOTAL, converte p/ unitário
     function unitPrice(precoField, qtdeField){
       const q = toNum(qtdeField);
       let p = toNum(precoField);
-      if (p > 1000 && q > 0) p = p / q;  // trata "Aporte Total"
+      if (p > 1000 && q > 0) p = p / q;
       return p;
     }
-
     function normalizeISO(x){ if(!x) return null; const s=String(x); const clean = s.length>=10 ? s.substring(0,10) : s; const d = new Date(clean+'T00:00:00'); return isNaN(d)? null : d; }
     function inMonth(dateLike, ano, mes){ const d=normalizeISO(dateLike); return !!d && d.getFullYear()===Number(ano) && (d.getMonth()+1)===Number(mes); }
     function BR(dateLike){ const d=normalizeISO(dateLike); if(!d) return ''; const dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yy=d.getFullYear(); return `${dd}/${mm}/${yy}`; }
-    function toISO(dmy){ const m=/^(\\d{2})[\\/\\-](\\d{2})[\\/\\-](\\d{4})$/.exec(String(dmy||'')); if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`; }
+    function toISO(dmy){ const m=/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/.exec(String(dmy||'')); if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`; }
 
     // ===== Navegação
     qsa('.tabs button').forEach(btn=>btn.addEventListener('click',()=>showPage(btn.dataset.page)));
@@ -316,33 +345,58 @@
     }
 
     // ===== Preços
-    let PRICE_MAP = {}; // { TICKER: price }
-
+    let PRICE_MAP = {};
     async function refreshPrices(){
-      try { await apiPost({ action:'prices/update' }); } catch(e){ /* ok se falhar */ }
+      try { await apiPost({ action:'prices/update' }); } catch(e){ }
       try {
         const prices = await apiGet('prices'); // [{ticker, price, time}]
         PRICE_MAP = {};
         (prices||[]).forEach(p => {
           const tk = String(p.ticker||'').toUpperCase();
-          PRICE_MAP[tk] = toPrice(p.price); // <<< usa toPrice
+          PRICE_MAP[tk] = toPrice(p.price);
         });
-      } catch(e) {
-        console.warn('Falha ao obter preços:', e);
-      }
+      } catch(e) { console.warn('Falha ao obter preços:', e); }
       return PRICE_MAP;
+    }
+
+    // ===== Mapas auxiliares
+    function mapExercidasPorTicker(opcoes, encerr) {
+      const byCode = new Map();
+      (opcoes || []).forEach(o => byCode.set(String(o.codigo||''), o));
+      const out = {};
+      const hoje = new Date().toISOString().substring(0,10);
+      (encerr || []).forEach(e => {
+        if (String(e.status_final||'').toLowerCase() !== 'exercida') return;
+        const d = (e.data_fechamento||'').substring(0,10);
+        if (d && d > hoje) return;
+        const op = byCode.get(String(e.codigo||'')); if (!op) return;
+        const tk = String(op.subjacente||'').toUpperCase();
+        const q  = toNum(op.qtde);
+        out[tk] = (out[tk]||0) + q;
+      });
+      return out;
+    }
+    function mapCobertasAbertas(opcoes) {
+      const out = {};
+      (opcoes || []).forEach(o => {
+        if (String(o.status||'').toLowerCase() !== 'aberta') return;
+        const tk = String(o.subjacente||'').toUpperCase();
+        const q  = toNum(o.qtde);
+        out[tk] = (out[tk]||0) + q;
+      });
+      return out;
     }
 
     // ===== Carteira
     function buildCarteiraFromCompras(compras) {
-      const acc = []; // [{ticker, qtde, precoMedio, precoAtual, vm}]
+      const acc = [];
       (compras||[]).forEach(c => {
         const k = String(c.ticker||'').toUpperCase();
         let x = acc.find(a => a.ticker===k);
-        if(!x){ x = { ticker:k, qtde:0, precoMedio:0, precoAtual:0, vm:0 }; acc.push(x); }
+        if(!x){ x = { ticker:k, qtde:0, precoMedio:0, precoAtual:0, vm:0, livre:0 }; acc.push(x); }
 
         const qtd = toNum(c.qtde);
-        const pr  = unitPrice(c.preco, c.qtde); // normaliza p/ unitário
+        const pr  = unitPrice(c.preco, c.qtde);
 
         const custo = qtd * pr;
         const qtdAnt = x.qtde;
@@ -354,7 +408,20 @@
         x.precoAtual = last > 0 ? last : (x.precoAtual || pr || 0);
       });
 
-      acc.forEach(x => { x.vm = x.qtde * x.precoAtual; });
+      // abate exercícios
+      const exercidas = mapExercidasPorTicker(DATA.opcoes, DATA.encerr);
+      acc.forEach(x => {
+        const abat = toNum(exercidas[x.ticker]);
+        if (abat > 0) x.qtde = Math.max(0, x.qtde - abat);
+      });
+
+      // livre (qtde - coberturas abertas) e VM
+      const abertas = mapCobertasAbertas(DATA.opcoes);
+      acc.forEach(x => {
+        x.livre = Math.max(0, x.qtde - toNum(abertas[x.ticker]));
+        x.vm    = x.qtde * x.precoAtual;
+      });
+
       return acc;
     }
 
@@ -371,22 +438,12 @@
           <td>${money(a.precoMedio)}</td>
           <td>${money(a.precoAtual)}</td>
           <td>${money(a.vm)}</td>
-          <td>${toNum(a.qtde)}</td>
+          <td>${toNum(a.livre)}</td>
         </tr>
       `).join('');
     }
 
-    function updatePatrimonioAndKPIs(){
-      const carteira = buildCarteiraFromCompras(DATA.compras||[]);
-      const vmCarteira = carteira.reduce((s,a)=> s + toNum(a.vm), 0);
-
-      document.getElementById('kpiSaldo').textContent = money(vmCarteira);
-      document.getElementById('badgePatVal').textContent = money(vmCarteira);
-
-      renderCarteira(carteira);
-    }
-
-    // ===== Render – Opções
+    // ===== Opções – render
     function renderOpcoes(opcoes){
       const tb = qs('#tbOpcoes');
       if(!opcoes || !opcoes.length){ tb.innerHTML = `<tr><td colspan="9" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
@@ -455,6 +512,36 @@
           <td>${money(toNum(m.patrimonio))}</td>
         </tr>`).join('');
     }
+
+    // ===== Caixa e MM Opções (persistidos no navegador)
+    const CASH_KEY = 'saldo_caixa_bolsa';
+    const OPT_MTM_KEY = 'opcoes_mtm';
+    function getCash(){ return toNum(localStorage.getItem(CASH_KEY) || 0); }
+    function setCash(v){ localStorage.setItem(CASH_KEY, String(v)); renderCash(); updatePatrimonioAndKPIs(); }
+    function renderCash(){
+      const v = getCash();
+      qs('#kpiCaixa').textContent = money(v);
+      const inp = qs('#inputCaixa'); if (inp) inp.value = v ? String(v) : '';
+    }
+    function getOptMtm(){ return toNum(localStorage.getItem(OPT_MTM_KEY) || 0); }
+    function setOptMtm(v){ localStorage.setItem(OPT_MTM_KEY, String(v)); renderOptMtm(); updatePatrimonioAndKPIs(); }
+    function renderOptMtm(){
+      const v = getOptMtm();
+      qs('#kpiMtmOp').textContent = money(v);
+      const inp = qs('#inputMtmOp'); if (inp) inp.value = v ? String(v) : '';
+    }
+    document.addEventListener('click', e=>{
+      if (e.target && e.target.id === 'btnSalvarCaixa'){
+        const v = toNum(qs('#inputCaixa').value);
+        setCash(v);
+        alert('Saldo em conta atualizado!');
+      }
+      if (e.target && e.target.id === 'btnSalvarMtmOp'){
+        const v = toNum(qs('#inputMtmOp').value);
+        setOptMtm(v);
+        alert('MM de opções atualizado!');
+      }
+    });
 
     // ===== Estado
     let DATA = { aportes:[], compras:[], opcoes:[], encerr:[], mensal:[] };
@@ -574,38 +661,22 @@
       drawCharts();
     }
 
-    // ===== Extrato: buscar/aplicar
-    let ultimoCalc = null;
-    function calcularMensalLocal(ano, mes){
-      const aporte = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes)).reduce((s,a)=>s+toNum(a.valor),0);
-      const premios= (DATA.opcoes ||[]).filter(o=>inMonth(o.data_venda,ano,mes)).reduce((s,o)=>s+toNum(o.premio),0);
-      const resultados=(DATA.encerr||[]).filter(e=>inMonth(e.data_fechamento,ano,mes)).reduce((s,e)=>s+toNum(e.resultado),0);
-      const rend_rs = premios + resultados;
-      const base = Math.max(1, aporte + premios);
-      const rend_pct = (rend_rs/base)*100;
-      const patrimonio = aporte + rend_rs;
-      return {ano,mes,aporte, "rend_r$":rend_rs, "rend_%":rend_pct, patrimonio};
+    // ===== Patrimônio líquido (VM ações − MM opções + caixa)
+    function updatePatrimonioAndKPIs(){
+      const carteira = buildCarteiraFromCompras(DATA.compras||[]);
+      const vmAcoes = carteira.reduce((s,a)=> s + toNum(a.vm), 0);
+      const caixa = getCash();
+      const mtmOp = getOptMtm(); // você informa (ex.: 390,00)
+
+      const patrimonioLiquido = vmAcoes - mtmOp + caixa;
+
+      document.getElementById('kpiSaldo').textContent = money(patrimonioLiquido);
+      document.getElementById('badgePatVal').textContent = money(patrimonioLiquido);
+
+      renderCarteira(carteira);
+      renderCash();
+      renderOptMtm();
     }
-    qs('#btnBuscarExtrato').addEventListener('click', ()=>{
-      const ano = Number(qs('#exAno').value || new Date().getFullYear());
-      const mes = Number(qs('#exMes').value || (new Date().getMonth()+1));
-      ultimoCalc = calcularMensalLocal(ano,mes);
-      renderExtrato([ultimoCalc]);
-    });
-    qs('#btnAplicarExtrato').addEventListener('click', async ()=>{
-      if(!ultimoCalc){ alert('Clique em Buscar antes de Aplicar.'); return; }
-      await apiPost({ action:'mensal/upsert', ...ultimoCalc });
-      alert('Mensal aplicado!');
-      await reloadAll();
-    });
-    qs('#btnSyncCtxFromExtrato').addEventListener('click', ()=>{
-      const ano = Number(qs('#exAno').value || CTX.ano);
-      const mes = Number(qs('#exMes').value || CTX.mes);
-      CTX = { ano, mes };
-      syncCtxToUI();
-      updateAllCalculations();
-      updatePatrimonioAndKPIs();
-    });
 
     // ===== Fluxo principal
     async function reloadAll(){
@@ -622,14 +693,12 @@
       renderExtrato(mensal);
     }
 
-    // Botão atualizar cotações
     document.getElementById('btnAtualizarPrecos').addEventListener('click', async ()=>{
       await refreshPrices();
       updatePatrimonioAndKPIs();
       alert('Cotações atualizadas!');
     });
 
-    // Auto-refresh (60s) – opcional
     setInterval(async ()=>{
       try { await refreshPrices(); updatePatrimonioAndKPIs(); } catch(e){}
     }, 60000);
@@ -642,13 +711,15 @@
       rows.forEach(r=>{ csv += `${r.ano},${r.mes},${toNum(r.aporte)},${toNum(r["rend_r$"])||toNum(r.rend_rs)},${toNum(r["rend_%"])||toNum(r.rend_pct)},${toNum(r.patrimonio)}\n`; });
       const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob); const a=document.createElement('a');
-      a.href=url; a.download='mensal.csv'; a.click(); URL.revokeObjectURL(url);
+      a.href = url; a.download = 'mensal.csv'; a.click(); URL.revokeObjectURL(url);
     });
 
     // Init
     (function init(){
       qs('#ctxMes').value = String(CTX.mes); qs('#ctxAno').value = String(CTX.ano);
       qs('#exMes').value = String(CTX.mes);  qs('#exAno').value = String(CTX.ano);
+      renderCash();
+      renderOptMtm();
       reloadAll();
     })();
   </script>
