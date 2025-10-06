@@ -256,7 +256,7 @@
     const money = n => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(n||0));
     const pct   = n => (Number(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
 
-    // Conversor robusto BR -> Number (corrige "6.192,00", "3,87", etc.)
+    // Conversor BR -> Number
     function toNum(x){
       if (typeof x === 'number') return isFinite(x) ? x : 0;
       if (x == null) return 0;
@@ -271,11 +271,23 @@
       return isFinite(n) ? n : 0;
     }
 
-    // Se "preco" vier como TOTAL, converte para unitário por heurística
+    // Corrige casos "6.192,00" que devem ser 6.192 (ponto decimal)
+    function toPrice(x){
+      const raw = (x==null) ? '' : String(x).trim();
+      let n = toNum(raw);
+      if (n > 1000 && raw.includes('.') && raw.includes(',')) {
+        // Tenta interpretar o ponto como decimal (remove vírgula)
+        const alt = Number(raw.replace(/,/g,''));
+        if (isFinite(alt) && alt < 1000) return alt;
+      }
+      return n;
+    }
+
+    // Se "preco" de compra vier como TOTAL, converte p/ unitário
     function unitPrice(precoField, qtdeField){
       const q = toNum(qtdeField);
       let p = toNum(precoField);
-      if (p > 1000 && q > 0) p = p / q;  // trata "Aporte Total" como preço unitário
+      if (p > 1000 && q > 0) p = p / q;  // trata "Aporte Total"
       return p;
     }
 
@@ -303,7 +315,7 @@
       const j = await r.json(); if(!j.ok) throw new Error(j.error||'Falha POST'); return j.data;
     }
 
-    // ===== Preços (integração com backend)
+    // ===== Preços
     let PRICE_MAP = {}; // { TICKER: price }
 
     async function refreshPrices(){
@@ -311,7 +323,10 @@
       try {
         const prices = await apiGet('prices'); // [{ticker, price, time}]
         PRICE_MAP = {};
-        (prices||[]).forEach(p => { PRICE_MAP[String(p.ticker||'').toUpperCase()] = toNum(p.price); });
+        (prices||[]).forEach(p => {
+          const tk = String(p.ticker||'').toUpperCase();
+          PRICE_MAP[tk] = toPrice(p.price); // <<< usa toPrice
+        });
       } catch(e) {
         console.warn('Falha ao obter preços:', e);
       }
@@ -335,7 +350,7 @@
         x.qtde += qtd;
         x.precoMedio = ((x.precoMedio * qtdAnt) + custo) / Math.max(1, x.qtde);
 
-        const last = toNum(PRICE_MAP[k]);
+        const last = toPrice(PRICE_MAP[k]);
         x.precoAtual = last > 0 ? last : (x.precoAtual || pr || 0);
       });
 
