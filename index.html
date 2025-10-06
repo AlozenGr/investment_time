@@ -27,6 +27,12 @@
 </head>
 <body class="bg-slate-50 text-slate-800">
 
+  <!-- Badge fixo de Patrimônio -->
+  <div id="badgePatrimonio"
+       class="fixed top-3 right-3 z-30 bg-slate-900 text-white rounded-xl px-3 py-2 text-sm shadow-lg">
+    Patrimônio: <span id="badgePatVal">R$ 0,00</span>
+  </div>
+
   <!-- Topbar -->
   <header class="bg-white border-b border-slate-200">
     <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -38,6 +44,7 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
+        <button type="button" id="btnAtualizarPrecos" class="btn secondary text-xs">Atualizar cotações</button>
         <button type="button" id="btnExportCsv" class="btn secondary text-xs">Exportar CSV (Mensal)</button>
       </div>
     </div>
@@ -69,7 +76,7 @@
 
     <!-- KPIs -->
     <section class="grid md:grid-cols-5 gap-3">
-      <div class="card p-4 kpi"><div class="text-xs text-slate-500">Saldo Atual</div><div class="v" id="kpiSaldo">R$ 0,00</div><div class="text-[11px] text-slate-500">Caixa</div></div>
+      <div class="card p-4 kpi"><div class="text-xs text-slate-500">Saldo Atual</div><div class="v" id="kpiSaldo">R$ 0,00</div><div class="text-[11px] text-slate-500">Valor de mercado da carteira</div></div>
       <div class="card p-4 kpi"><div class="text-xs text-slate-500">Aportes no Mês</div><div class="v" id="kpiAporteMes">R$ 0,00</div><div class="text-[11px] text-slate-500">Somente mês/ano em referência</div></div>
       <div class="card p-4 kpi"><div class="text-xs text-slate-500">Rendimento no Mês (%)</div><div class="v" id="kpiRendPerc">0,00%</div><div class="text-[11px] text-slate-500">cálculo: (Prêmios + Resultados) / (Aportes + Prêmios)</div></div>
       <div class="card p-4 kpi"><div class="text-xs text-slate-500">Prêmio no Ciclo</div><div class="v" id="kpiPremio">R$ 0,00</div><div class="text-[11px] text-slate-500">Somente mês/ano em referência</div></div>
@@ -272,6 +279,67 @@
       const j = await r.json(); if(!j.ok) throw new Error(j.error||'Falha POST'); return j.data;
     }
 
+    // ===== Preços (integração)
+    let PRICE_MAP = {}; // { TICKER: price }
+
+    async function refreshPrices(){
+      try { await apiPost({ action:'prices/update' }); } catch(e){ /* ok se falhar o update (pode usar trigger no backend) */ }
+      try {
+        const prices = await apiGet('prices'); // [{ticker, price, time}]
+        PRICE_MAP = {};
+        (prices||[]).forEach(p => { PRICE_MAP[String(p.ticker||'').toUpperCase()] = Number(p.price||0); });
+      } catch(e) {
+        console.warn('Falha ao obter preços:', e);
+      }
+      return PRICE_MAP;
+    }
+
+    function buildCarteiraFromCompras(compras) {
+      const acc = []; // [{ticker, qtde, precoMedio, precoAtual, vm}]
+      (compras||[]).forEach(c => {
+        const k = String(c.ticker||'').toUpperCase();
+        let x = acc.find(a => a.ticker===k);
+        if(!x){ x = { ticker:k, qtde:0, precoMedio:0, precoAtual:0, vm:0 }; acc.push(x); }
+        const qtd = Number(c.qtde||0), pr = Number(c.preco||0);
+        const custo = qtd * pr, qtdAnt = x.qtde;
+        x.qtde += qtd;
+        x.precoMedio = ((x.precoMedio * qtdAnt) + custo) / Math.max(1, x.qtde);
+        x.precoAtual = PRICE_MAP[k] || x.precoAtual || pr;
+      });
+      acc.forEach(x => { x.vm = x.qtde * (x.precoAtual||0); });
+      return acc;
+    }
+
+    function renderCarteira(carteira){
+      const tb = document.getElementById('tbCarteira');
+      if(!carteira || !carteira.length){
+        tb.innerHTML = '<tr><td colspan="6" class="text-slate-500 text-sm">Sem dados.</td></tr>';
+        return;
+      }
+      tb.innerHTML = carteira.map(a => `
+        <tr>
+          <td>${a.ticker}</td>
+          <td>${a.qtde}</td>
+          <td>${money(a.precoMedio)}</td>
+          <td>${money(a.precoAtual)}</td>
+          <td>${money(a.vm)}</td>
+          <td>${a.qtde}</td>
+        </tr>
+      `).join('');
+    }
+
+    function updatePatrimonioAndKPIs(){
+      const carteira = buildCarteiraFromCompras(DATA.compras||[]);
+      const vmCarteira = carteira.reduce((s,a)=> s + (a.vm||0), 0);
+
+      // KPIs
+      document.getElementById('kpiSaldo').textContent = money(vmCarteira);
+      document.getElementById('badgePatVal').textContent = money(vmCarteira);
+
+      // Tabela carteira
+      renderCarteira(carteira);
+    }
+
     // ===== Render – Opções (com encerramento/exercício)
     function renderOpcoes(opcoes){
       const tb = qs('#tbOpcoes');
@@ -420,7 +488,7 @@
     // ===== UI Contexto
     function syncCtxToUI(){ qs('#ctxMes').value=String(CTX.mes); qs('#ctxAno').value=String(CTX.ano); }
     function syncUIToCtx(){ const m=Number(qs('#ctxMes').value||CTX.mes); const a=Number(qs('#ctxAno').value||CTX.ano); CTX={ano:a,mes:m}; }
-    qs('#btnCtxAplicar').addEventListener('click', ()=>{ syncUIToCtx(); updateAllCalculations(); });
+    qs('#btnCtxAplicar').addEventListener('click', ()=>{ syncUIToCtx(); updateAllCalculations(); updatePatrimonioAndKPIs(); });
 
     // ===== KPIs/Cartões por mês/ano
     function updateAllCalculations(){
@@ -437,12 +505,11 @@
       const base = Math.max(1, somaAporte + somaPremio);
       const rendimentoMesPct = (resultadoCiclo / base) * 100;
 
-      // KPIs
+      // KPIs não ligados a preço
       qs('#kpiAporteMes').textContent = money(somaAporte);
       qs('#kpiPremio').textContent    = money(somaPremio);
       qs('#kpiResultado').textContent = money(resultadoCiclo);
       qs('#kpiRendPerc').textContent  = pct(rendimentoMesPct);
-      qs('#kpiSaldo').textContent     = money(somaAporte); // placeholder
 
       // Cards
       qs('#boxAcoesMes').textContent = somaAporte>0 ? `Valor aportado no mês: ${money(somaAporte)}` : 'Sem dados.';
@@ -495,6 +562,7 @@
       CTX = { ano, mes };
       syncCtxToUI();
       updateAllCalculations();
+      updatePatrimonioAndKPIs();
     });
 
     // ===== Formulários
@@ -537,10 +605,30 @@
         apiGet('aportes'), apiGet('compras'), apiGet('opcoes'), apiGet('encerr'), apiGet('mensal')
       ]);
       DATA = { aportes, compras, opcoes, encerr, mensal };
+
+      // Atualiza preços e patrimônio
+      await refreshPrices();
+      updateAllCalculations();
+      updatePatrimonioAndKPIs();
+
       renderOpcoes(opcoes);
       renderExtrato(mensal);
-      updateAllCalculations();
     }
+
+    // Botão atualizar cotações
+    document.getElementById('btnAtualizarPrecos').addEventListener('click', async ()=>{
+      await refreshPrices();
+      updatePatrimonioAndKPIs();
+      alert('Cotações atualizadas!');
+    });
+
+    // Auto-refresh (60s) — opcional
+    setInterval(async ()=>{
+      try {
+        await refreshPrices();
+        updatePatrimonioAndKPIs();
+      } catch(e){ console.warn('refresh preco', e); }
+    }, 60000);
 
     // Exportar CSV dos dados Mensal (ou calculado de bruto)
     qs('#btnExportCsv').addEventListener('click', ()=>{
