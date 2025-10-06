@@ -725,3 +725,730 @@
   </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Venda Coberta – Painel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{ --card-bg:#fff; --card-br:#e5e7eb; }
+    .card{background:var(--card-bg); border:1px solid var(--card-br); border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.04);}
+    .input{border:1px solid #cbd5e1; border-radius:10px; padding:.65rem .85rem; width:100%;}
+    .btn{border:1px solid #0ea5e9; background:#0284c7; color:#fff; border-radius:10px; padding:.6rem 1rem; font-weight:600;}
+    .btn.secondary{background:#fff; color:#0f172a; border-color:#cbd5e1;}
+    .btn.ghost{background:#fff;border-color:transparent;color:#0f172a}
+    .tabs button{padding:.45rem .9rem; border-radius:10px; border:1px solid #e5e7eb; background:#fff;}
+    .tabs .active{background:#0ea5e9; border-color:#0ea5e9; color:#fff;}
+    .kpi .v{font-size:1.15rem; font-weight:800;}
+    .table{width:100%;}
+    .table th,.table td{border-bottom:1px solid #e5e7eb; padding:.6rem .5rem; text-align:left; white-space:nowrap; font-size:.925rem;}
+    .scroll-x{overflow:auto}
+    .badge{font-size:.75rem; padding:.25rem .6rem; border-radius:999px; border:1px solid #cbd5e1; background:#fff;}
+    .small{font-size:.85rem}
+    .hidden{display:none}
+    canvas{width:100%!important;height:280px!important;}
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+  <!-- Badge fixo de Patrimônio -->
+  <div id="badgePatrimonio"
+       class="fixed top-3 right-3 z-30 bg-slate-900 text-white rounded-xl px-3 py-2 text-sm shadow-lg">
+    Patrimônio: <span id="badgePatVal">R$ 0,00</span>
+  </div>
+
+  <!-- Topbar -->
+  <header class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-full bg-slate-900 text-white grid place-items-center font-bold">B</div>
+        <div>
+          <div class="font-semibold">Venda Coberta – Painel</div>
+          <div class="text-xs text-slate-500">Conectado ao Google Apps Script</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" id="btnAtualizarPrecos" class="btn secondary text-xs">Atualizar cotações</button>
+        <button type="button" id="btnExportCsv" class="btn secondary text-xs">Exportar CSV (Mensal)</button>
+      </div>
+    </div>
+    <div class="max-w-7xl mx-auto px-4 pb-3">
+      <div class="tabs flex gap-2">
+        <button type="button" class="active" data-page="dashboard">Dashboard</button>
+        <button type="button" data-page="ir">Imposto de Renda</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- DASHBOARD -->
+  <main id="pageDashboard" class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- Contexto de Mês/Ano -->
+    <section class="card p-4">
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="text-sm font-semibold mr-2">Mês/Ano de referência</div>
+        <select id="ctxMes" class="input w-32 max-w-[120px]">
+          <option value="1">janeiro</option><option value="2">fevereiro</option><option value="3">março</option><option value="4">abril</option>
+          <option value="5">maio</option><option value="6">junho</option><option value="7">julho</option><option value="8">agosto</option>
+          <option value="9">setembro</option><option value="10">outubro</option><option value="11">novembro</option><option value="12">dezembro</option>
+        </select>
+        <input id="ctxAno" class="input w-28 max-w-[100px]" type="number" placeholder="AAAA" />
+        <button id="btnCtxAplicar" class="btn">Aplicar</button>
+        <div class="text-xs text-slate-500 ml-2">Todos os cartões e somatórios usam este mês/ano.</div>
+      </div>
+    </section>
+
+    <!-- KPIs -->
+    <section class="grid md:grid-cols-5 gap-3">
+      <div class="card p-4 kpi"><div class="text-xs text-slate-500">Saldo Atual</div><div class="v" id="kpiSaldo">R$ 0,00</div><div class="text-[11px] text-slate-500">VM Ações − MM Opções + Caixa</div></div>
+      <div class="card p-4 kpi"><div class="text-xs text-slate-500">Aportes no Mês</div><div class="v" id="kpiAporteMes">R$ 0,00</div><div class="text-[11px] text-slate-500">Somente mês/ano em referência</div></div>
+      <div class="card p-4 kpi"><div class="text-xs text-slate-500">Rendimento no Mês (%)</div><div class="v" id="kpiRendPerc">0,00%</div><div class="text-[11px] text-slate-500">cálculo: (Prêmios + Resultados) / (Aportes + Prêmios)</div></div>
+      <div class="card p-4 kpi"><div class="text-xs text-slate-500">Prêmio no Ciclo</div><div class="v" id="kpiPremio">R$ 0,00</div><div class="text-[11px] text-slate-500">Somente mês/ano em referência</div></div>
+      <div class="card p-4 kpi"><div class="text-xs text-slate-500">Resultado no Ciclo</div><div class="v" id="kpiResultado">R$ 0,00</div><div class="text-[11px] text-slate-500">Prêmios + Resultados (mês)</div></div>
+    </section>
+
+    <!-- Caixa e MM Opções -->
+    <section class="grid md:grid-cols-2 gap-3">
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-500">Saldo em Conta</div>
+            <div class="v font-extrabold text-lg" id="kpiCaixa">R$ 0,00</div>
+            <div class="text-[11px] text-slate-500">Somado no Patrimônio</div>
+          </div>
+          <div class="text-right">
+            <label class="text-xs text-slate-500 block mb-1">Editar</label>
+            <div class="flex items-center gap-2">
+              <input id="inputCaixa" type="number" step="0.01" class="input w-40" placeholder="R$">
+              <button id="btnSalvarCaixa" class="btn secondary text-xs">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-slate-500">MM Opções Abertas (obrigações)</div>
+            <div class="v font-extrabold text-lg" id="kpiMtmOp">R$ 0,00</div>
+            <div class="text-[11px] text-slate-500">Subtraído do Patrimônio</div>
+          </div>
+          <div class="text-right">
+            <label class="text-xs text-slate-500 block mb-1">Editar</label>
+            <div class="flex items-center gap-2">
+              <input id="inputMtmOp" type="number" step="0.01" class="input w-40" placeholder="R$">
+              <button id="btnSalvarMtmOp" class="btn secondary text-xs">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gráficos (somente os 3 principais) -->
+    <section class="grid md:grid-cols-3 gap-3">
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold mb-2">Evolução do Patrimônio</h3>
+          <div class="flex gap-2">
+            <button class="btn ghost text-xs" data-dl="chartPatrimonio" data-type="png">PNG</button>
+            <button class="btn ghost text-xs" data-dl="chartPatrimonio" data-type="csv">CSV</button>
+          </div>
+        </div>
+        <canvas id="chartPatrimonio"></canvas>
+      </div>
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold mb-2">Aportes por Mês</h3>
+          <div class="flex gap-2">
+            <button class="btn ghost text-xs" data-dl="chartAportes" data-type="png">PNG</button>
+            <button class="btn ghost text-xs" data-dl="chartAportes" data-type="csv">CSV</button>
+          </div>
+        </div>
+        <canvas id="chartAportes"></canvas>
+      </div>
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold mb-2">Resultado do Ciclo (Prêmio + Resultado)</h3>
+          <div class="flex gap-2">
+            <button class="btn ghost text-xs" data-dl="chartResultado" data-type="png">PNG</button>
+            <button class="btn ghost text-xs" data-dl="chartResultado" data-type="csv">CSV</button>
+          </div>
+        </div>
+        <canvas id="chartResultado"></canvas>
+      </div>
+    </section>
+
+    <!-- Cards de mês -->
+    <section class="grid md:grid-cols-2 gap-3">
+      <div class="card p-4">
+        <h3 class="font-semibold mb-1">Ações Aportadas do Mês</h3>
+        <div id="boxAcoesMes" class="small text-slate-700">Sem dados.</div>
+      </div>
+      <div class="card p-4">
+        <h3 class="font-semibold mb-1">Opções Vendidas do Mês</h3>
+        <div class="text-xs text-slate-500 mb-1">Considera <b>data_venda</b> OU <b>vencimento</b> no mês/ano de referência</div>
+        <div id="boxOpcoesMes" class="small text-slate-700">Sem dados.</div>
+      </div>
+    </section>
+
+    <!-- Carteira + Opções -->
+    <section class="grid md:grid-cols-2 gap-3">
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Carteira</h3>
+          <div class="text-xs text-slate-500">Preço médio, VM, Livre</div>
+        </div>
+        <div class="scroll-x mt-2">
+          <table class="table">
+            <thead><tr>
+              <th>Ticker</th><th>Qtde</th><th>Preço Médio</th><th>Preço Atual</th><th>VM</th><th>Livre</th>
+            </tr></thead>
+            <tbody id="tbCarteira"><tr><td colspan="6" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Opções Cobertas</h3>
+          <div class="text-xs text-slate-500">Abertas • Encerradas</div>
+        </div>
+        <div class="scroll-x mt-2">
+          <table class="table">
+            <thead><tr>
+              <th>Subjacente</th><th>Código</th><th>Qtde</th><th>Strike</th><th>Prêmio</th><th>Venc.</th><th>Status</th><th>Resultado</th><th>Ação</th>
+            </tr></thead>
+            <tbody id="tbOpcoes"><tr><td colspan="9" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Extrato Mensal -->
+    <section class="card p-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold">Extrato Mensal</h3>
+        <button type="button" id="btnSyncCtxFromExtrato" class="btn secondary text-xs">Usar mês/ano do filtro</button>
+      </div>
+      <p class="text-xs text-slate-500">Aportes (R$), Rendimentos (R$ e %), Patrimônio no fim do mês.</p>
+      <div class="mt-3 grid md:grid-cols-4 gap-2">
+        <select id="exMes" class="input">
+          <option value="1">jan</option><option value="2">fev</option><option value="3">mar</option><option value="4">abr</option>
+          <option value="5">mai</option><option value="6">jun</option><option value="7">jul</option><option value="8">ago</option>
+          <option value="9">set</option><option value="10">out</option><option value="11">nov</option><option value="12">dez</option>
+        </select>
+        <input id="exAno" class="input" type="number" placeholder="AAAA" />
+        <button type="button" id="btnBuscarExtrato" class="btn">Buscar</button>
+        <button type="button" id="btnAplicarExtrato" class="btn secondary">Aplicar</button>
+      </div>
+      <div class="scroll-x mt-3">
+        <table class="table">
+          <thead><tr><th>Mês</th><th>Aporte</th><th>Rend. (R$)</th><th>Rend. (%)</th><th>Patrimônio</th></tr></thead>
+          <tbody id="tbExtrato"><tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Formulários -->
+    <section class="grid md:grid-cols-3 gap-3">
+      <!-- Aporte -->
+      <form id="formAporte" class="card p-4" onsubmit="return false;">
+        <h3 class="font-semibold">Registrar Aporte</h3>
+        <div class="mt-2 grid gap-2">
+          <input id="aporteData" class="input" placeholder="dd/mm/aaaa">
+          <input id="aporteValor" class="input" type="number" step="0.01" placeholder="R$">
+          <input id="aporteObs" class="input" placeholder="Observação">
+          <button id="btnAddAporte" type="button" class="btn">Adicionar</button>
+        </div>
+      </form>
+
+      <!-- Compra -->
+      <form id="formCompra" class="card p-4" onsubmit="return false;">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Comprar Ação</h3>
+          <span class="badge">Carteira</span>
+        </div>
+        <div class="mt-2 grid gap-2">
+          <input id="compraTicker" class="input" placeholder="Ticker (ex: PCAR3)">
+          <input id="compraPreco" class="input" type="number" step="0.01" placeholder="Preço (R$)">
+          <input id="compraQtde" class="input" type="number" step="1" placeholder="Qtde">
+          <input id="compraData" class="input" placeholder="dd/mm/aaaa">
+          <button id="btnAddCompra" type="button" class="btn">Adicionar</button>
+        </div>
+      </form>
+
+      <!-- Vender Call Coberta -->
+      <form id="formOpcao" class="card p-4" onsubmit="return false;">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Vender Call Coberta</h3>
+          <span class="badge">Opções</span>
+        </div>
+        <div class="mt-2 grid gap-2">
+          <input id="opSubj" class="input" placeholder="Subjacente (ex: PETR4)">
+          <input id="opCodigo" class="input" placeholder="Código (ex: PETRA30)">
+          <div class="grid grid-cols-2 gap-2">
+            <input id="opQtde" class="input" type="number" step="1" placeholder="Qtde">
+            <input id="opStrike" class="input" type="number" step="0.01" placeholder="Strike (R$)">
+          </div>
+          <input id="opPremio" class="input" type="number" step="0.01" placeholder="Prêmio (R$)">
+          <div class="grid grid-cols-2 gap-2">
+            <input id="opDataVenda" class="input" placeholder="Data Venda (dd/mm/aaaa)">
+            <input id="opVenc" class="input" placeholder="Vencimento (dd/mm/aaaa)">
+          </div>
+          <button id="btnAddOpcao" type="button" class="btn">Registrar</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <!-- IR (placeholder) -->
+  <main id="pageIr" class="max-w-7xl mx-auto px-4 py-6 hidden">
+    <h2 class="text-lg font-semibold mb-4">Imposto de Renda</h2>
+    <p class="text-sm text-slate-500">(em construção)</p>
+  </main>
+
+  <script>
+    // ===== CONFIG FIXA
+    const API_URL = "https://script.google.com/macros/s/AKfycbyRpqe93H1IFKWQuJ8Eu_f3SnZGKnWIXUvizy_iAhmHlm5IuQj0Sf388E-S5cEN_7BbJw/exec";
+    const API_KEY = "Vc7@Rendimentos#2025!";
+
+    // ===== Utils
+    const qs = s => document.querySelector(s);
+    const qsa = s => Array.from(document.querySelectorAll(s));
+    const money = n => (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})).format(Number(n||0));
+    const pct   = n => (Number(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+
+    function toNum(x){
+      if (typeof x === 'number') return isFinite(x) ? x : 0;
+      if (x == null) return 0;
+      let s = String(x).trim();
+      if (!s) return 0;
+      if (/^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(s)) {
+        s = s.replace(/\./g,'').replace(',', '.');
+      } else if (/^-?\d+,\d+$/.test(s)) {
+        s = s.replace(',', '.');
+      }
+      const n = Number(s);
+      return isFinite(n) ? n : 0;
+    }
+    function toPrice(x){
+      const raw = (x==null) ? '' : String(x).trim();
+      let n = toNum(raw);
+      if (n > 1000 && raw.includes('.') && raw.includes(',')) {
+        const alt = Number(raw.replace(/,/g,''));
+        if (isFinite(alt) && alt < 1000) return alt;
+      }
+      return n;
+    }
+    function unitPrice(precoField, qtdeField){
+      const q = toNum(qtdeField);
+      let p = toNum(precoField);
+      if (p > 1000 && q > 0) p = p / q;
+      return p;
+    }
+    function normalizeISO(x){ if(!x) return null; const s=String(x); const clean = s.length>=10 ? s.substring(0,10) : s; const d = new Date(clean+'T00:00:00'); return isNaN(d)? null : d; }
+    function inMonth(dateLike, ano, mes){ const d=normalizeISO(dateLike); return !!d && d.getFullYear()===Number(ano) && (d.getMonth()+1)===Number(mes); }
+    function BR(dateLike){ const d=normalizeISO(dateLike); if(!d) return ''; const dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yy=d.getFullYear(); return `${dd}/${mm}/${yy}`; }
+    function toISO(dmy){ const m=/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/.exec(String(dmy||'')); if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`; }
+
+    // ===== Navegação
+    qsa('.tabs button').forEach(btn=>btn.addEventListener('click',()=>showPage(btn.dataset.page)));
+    function showPage(page){
+      qsa('main').forEach(m=>m.classList.add('hidden'));
+      qs('#page'+page.charAt(0).toUpperCase()+page.slice(1)).classList.remove('hidden');
+      qsa('.tabs button').forEach(b=>b.classList.remove('active'));
+      qs(`.tabs button[data-page="${page}"]`).classList.add('active');
+    }
+
+    // ===== API
+    async function apiGet(resource){
+      const r = await fetch(`${API_URL}?resource=${encodeURIComponent(resource)}&key=${encodeURIComponent(API_KEY)}`);
+      const j = await r.json(); if(!j.ok) throw new Error(j.error||'Falha GET'); return j.data||[];
+    }
+    async function apiPost(body){
+      const r = await fetch(API_URL,{ method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(Object.assign({key:API_KEY}, body)) });
+      const j = await r.json(); if(!j.ok) throw new Error(j.error||'Falha POST'); return j.data;
+    }
+
+    // ===== Preços
+    let PRICE_MAP = {};
+    async function refreshPrices(){
+      try { await apiPost({ action:'prices/update' }); } catch(e){ }
+      try {
+        const prices = await apiGet('prices'); // [{ticker, price, time}]
+        PRICE_MAP = {};
+        (prices||[]).forEach(p => {
+          const tk = String(p.ticker||'').toUpperCase();
+          PRICE_MAP[tk] = toPrice(p.price);
+        });
+      } catch(e) { console.warn('Falha ao obter preços:', e); }
+      return PRICE_MAP;
+    }
+
+    // ===== Mapas auxiliares
+    function mapExercidasPorTicker(opcoes, encerr) {
+      const byCode = new Map();
+      (opcoes || []).forEach(o => byCode.set(String(o.codigo||''), o));
+      const out = {};
+      const hoje = new Date().toISOString().substring(0,10);
+      (encerr || []).forEach(e => {
+        if (String(e.status_final||'').toLowerCase() !== 'exercida') return;
+        const d = (e.data_fechamento||'').substring(0,10);
+        if (d && d > hoje) return;
+        const op = byCode.get(String(e.codigo||'')); if (!op) return;
+        const tk = String(op.subjacente||'').toUpperCase();
+        const q  = toNum(op.qtde);
+        out[tk] = (out[tk]||0) + q;
+      });
+      return out;
+    }
+    function mapCobertasAbertas(opcoes) {
+      const out = {};
+      (opcoes || []).forEach(o => {
+        if (String(o.status||'').toLowerCase() !== 'aberta') return;
+        const tk = String(o.subjacente||'').toUpperCase();
+        const q  = toNum(o.qtde);
+        out[tk] = (out[tk]||0) + q;
+      });
+      return out;
+    }
+
+    // ===== Carteira
+    function buildCarteiraFromCompras(compras) {
+      const acc = [];
+      (compras||[]).forEach(c => {
+        const k = String(c.ticker||'').toUpperCase();
+        let x = acc.find(a => a.ticker===k);
+        if(!x){ x = { ticker:k, qtde:0, precoMedio:0, precoAtual:0, vm:0, livre:0 }; acc.push(x); }
+
+        const qtd = toNum(c.qtde);
+        const pr  = unitPrice(c.preco, c.qtde);
+
+        const custo = qtd * pr;
+        const qtdAnt = x.qtde;
+
+        x.qtde += qtd;
+        x.precoMedio = ((x.precoMedio * qtdAnt) + custo) / Math.max(1, x.qtde);
+
+        const last = toPrice(PRICE_MAP[k]);
+        x.precoAtual = last > 0 ? last : (x.precoAtual || pr || 0);
+      });
+
+      // abate exercícios
+      const exercidas = mapExercidasPorTicker(DATA.opcoes, DATA.encerr);
+      acc.forEach(x => {
+        const abat = toNum(exercidas[x.ticker]);
+        if (abat > 0) x.qtde = Math.max(0, x.qtde - abat);
+      });
+
+      // livre (qtde - coberturas abertas) e VM
+      const abertas = mapCobertasAbertas(DATA.opcoes);
+      acc.forEach(x => {
+        x.livre = Math.max(0, x.qtde - toNum(abertas[x.ticker]));
+        x.vm    = x.qtde * x.precoAtual;
+      });
+
+      return acc;
+    }
+
+    function renderCarteira(carteira){
+      const tb = document.getElementById('tbCarteira');
+      if(!carteira || !carteira.length){
+        tb.innerHTML = '<tr><td colspan="6" class="text-slate-500 text-sm">Sem dados.</td></tr>';
+        return;
+      }
+      tb.innerHTML = carteira.map(a => `
+        <tr>
+          <td>${a.ticker}</td>
+          <td>${toNum(a.qtde)}</td>
+          <td>${money(a.precoMedio)}</td>
+          <td>${money(a.precoAtual)}</td>
+          <td>${money(a.vm)}</td>
+          <td>${toNum(a.livre)}</td>
+        </tr>
+      `).join('');
+    }
+
+    // ===== Opções – render
+    function renderOpcoes(opcoes){
+      const tb = qs('#tbOpcoes');
+      if(!opcoes || !opcoes.length){ tb.innerHTML = `<tr><td colspan="9" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
+      const todayKey = (new Date()).toISOString().substring(0,10);
+      tb.innerHTML = opcoes.map(o=>{
+        const vencISO = String(o.vencimento||'').substring(0,10);
+        const mostrarAcoes = (o.status||'')==='Aberta' && vencISO && vencISO<=todayKey;
+        const acoes = mostrarAcoes ? `
+           <button class="btn secondary text-xs" data-act="fechar" data-cod="${o.codigo}">Fechar</button>
+           <button class="btn secondary text-xs" data-act="exercida" data-cod="${o.codigo}">Exercida</button>
+           <button class="btn secondary text-xs" data-act="naoex" data-cod="${o.codigo}">Não Exercida</button>
+        ` : '';
+        return `
+          <tr>
+            <td>${o.subjacente||''}</td>
+            <td>${o.codigo||''}</td>
+            <td>${toNum(o.qtde)}</td>
+            <td>${money(toNum(o.strike))}</td>
+            <td>${money(toNum(o.premio))}</td>
+            <td>${BR(o.vencimento)||''}</td>
+            <td>${o.status||''}</td>
+            <td>${money(toNum(o.resultado))}</td>
+            <td class="flex gap-1">${acoes}</td>
+          </tr>`;
+      }).join('');
+
+      qsa('#tbOpcoes [data-act]').forEach(b=>{
+        b.addEventListener('click', async e=>{
+          const cod = e.currentTarget.dataset.cod;
+          const act = e.currentTarget.dataset.act;
+          let status_final='Encerrada', resultado=0, preco_acao=0, custo_fechar=0, taxas=0;
+          if(act==='fechar'){
+            preco_acao = toNum(prompt('Preço da ação para fechamento (R$):')||0);
+            custo_fechar = toNum(prompt('Custo para recomprar/fechar (R$):')||0);
+            taxas = toNum(prompt('Taxas (R$):')||0);
+            resultado = toNum(prompt('Resultado líquido (R$):')||0);
+            status_final = 'Encerrada';
+          }else if(act==='exercida'){
+            preco_acao = toNum(prompt('Preço da ação no vencimento (R$):')||0);
+            taxas = toNum(prompt('Taxas (R$):')||0);
+            resultado = toNum(prompt('Resultado líquido após execução (R$):')||0);
+            status_final = 'Exercida';
+          }else{
+            taxas = toNum(prompt('Taxas (R$):')||0);
+            resultado = toNum(prompt('Resultado líquido (R$):')||0);
+            status_final = 'Não Exercida';
+          }
+          const data_fechamento = new Date().toISOString().substring(0,10);
+          await apiPost({ action:'encerrar/create', codigo: cod, data_fechamento, preco_acao, custo_fechar, taxas, status_final, resultado });
+          await reloadAll();
+          alert('Registro salvo!');
+        });
+      });
+    }
+
+    // ===== Extrato
+    function renderExtrato(mensal){
+      const tb = qs('#tbExtrato');
+      if(!mensal || !mensal.length){ tb.innerHTML = `<tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
+      tb.innerHTML = mensal.map(m=>`
+        <tr>
+          <td>${String(m.mes).padStart(2,'0')}/${m.ano}</td>
+          <td>${money(toNum(m.aporte))}</td>
+          <td>${money(toNum(m['rend_r$']))}</td>
+          <td>${pct(toNum(m['rend_%']))}</td>
+          <td>${money(toNum(m.patrimonio))}</td>
+        </tr>`).join('');
+    }
+
+    // ===== Caixa e MM Opções (persistidos no navegador)
+    const CASH_KEY = 'saldo_caixa_bolsa';
+    const OPT_MTM_KEY = 'opcoes_mtm';
+    function getCash(){ return toNum(localStorage.getItem(CASH_KEY) || 0); }
+    function setCash(v){ localStorage.setItem(CASH_KEY, String(v)); renderCash(); updatePatrimonioAndKPIs(); }
+    function renderCash(){
+      const v = getCash();
+      qs('#kpiCaixa').textContent = money(v);
+      const inp = qs('#inputCaixa'); if (inp) inp.value = v ? String(v) : '';
+    }
+    function getOptMtm(){ return toNum(localStorage.getItem(OPT_MTM_KEY) || 0); }
+    function setOptMtm(v){ localStorage.setItem(OPT_MTM_KEY, String(v)); renderOptMtm(); updatePatrimonioAndKPIs(); }
+    function renderOptMtm(){
+      const v = getOptMtm();
+      qs('#kpiMtmOp').textContent = money(v);
+      const inp = qs('#inputMtmOp'); if (inp) inp.value = v ? String(v) : '';
+    }
+    document.addEventListener('click', e=>{
+      if (e.target && e.target.id === 'btnSalvarCaixa'){
+        const v = toNum(qs('#inputCaixa').value);
+        setCash(v);
+        alert('Saldo em conta atualizado!');
+      }
+      if (e.target && e.target.id === 'btnSalvarMtmOp'){
+        const v = toNum(qs('#inputMtmOp').value);
+        setOptMtm(v);
+        alert('MM de opções atualizado!');
+      }
+    });
+
+    // ===== Estado
+    let DATA = { aportes:[], compras:[], opcoes:[], encerr:[], mensal:[] };
+    let CTX = { ano:new Date().getFullYear(), mes:new Date().getMonth()+1 };
+
+    // ===== Gráficos (3)
+    let charts = { patrimonio:null, aportes:null, resultado:null };
+    function destroyCharts(){ Object.values(charts).forEach(c=>{ if(c){ c.destroy(); } }); charts={patrimonio:null, aportes:null, resultado:null}; }
+
+    function monthKey(ano, mes){ return `${ano}-${String(mes).padStart(2,'0')}`; }
+    function buildMonthlyAggFromRaw(){
+      const map = new Map();
+      function add(key, field, v){ const o = map.get(key) || {ano:+key.split('-')[0], mes:+key.split('-')[1], aporte:0, premio:0, resultado:0}; o[field]+=toNum(v||0); map.set(key,o); }
+      (DATA.aportes||[]).forEach(a=>{ const d=normalizeISO(a.data); if(d){ add(monthKey(d.getFullYear(), d.getMonth()+1), 'aporte', a.valor); } });
+      (DATA.opcoes||[]).forEach(o=>{ const d=normalizeISO(o.data_venda); if(d){ add(monthKey(d.getFullYear(), d.getMonth()+1), 'premio', o.premio); } });
+      (DATA.encerr||[]).forEach(e=>{ const d=normalizeISO(e.data_fechamento); if(d){ add(monthKey(d.getFullYear(), d.getMonth()+1), 'resultado', e.resultado); } });
+      const arr = Array.from(map.values()).sort((a,b)=> a.ano===b.ano ? a.mes-b.mes : a.ano-b.ano);
+      return arr.map(x=>({ ...x, rend_rs: toNum(x.premio) + toNum(x.resultado), rend_pct: ((toNum(x.premio)+toNum(x.resultado))/Math.max(1, toNum(x.aporte) + toNum(x.premio)))*100, patrimonio: toNum(x.aporte) + toNum(x.premio) + toNum(x.resultado) }));
+    }
+    function buildMonthlyFromMensal(){
+      return (DATA.mensal||[]).map(m=>({ ano:+m.ano, mes:+m.mes, aporte:toNum(m.aporte), rend_rs:toNum(m['rend_r$']), rend_pct:toNum(m['rend_%']), patrimonio:toNum(m.patrimonio), premio:0, resultado:0 }))
+        .sort((a,b)=> a.ano===b.ano ? a.mes-b.mes : a.ano-b.ano);
+    }
+    function drawCharts(){
+      destroyCharts();
+      let rows = buildMonthlyFromMensal();
+      if(!rows.length) rows = buildMonthlyAggFromRaw();
+      if(!rows.length) return;
+
+      const labels = rows.map(r=> `${String(r.mes).padStart(2,'0')}/${r.ano}`);
+      const patrimonio = rows.map(r => toNum(r.patrimonio) || (toNum(r.aporte) + toNum(r.rend_rs)));
+
+      charts.patrimonio = new Chart(document.getElementById('chartPatrimonio').getContext('2d'),{
+        type:'line',
+        data:{ labels, datasets:[{ label:'Patrimônio', data:patrimonio, borderWidth:2, fill:false }]},
+        options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
+      });
+
+      charts.aportes = new Chart(document.getElementById('chartAportes').getContext('2d'),{
+        type:'bar',
+        data:{ labels, datasets:[{ label:'Aportes', data: rows.map(r=>toNum(r.aporte)) }]},
+        options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
+      });
+
+      charts.resultado = new Chart(document.getElementById('chartResultado').getContext('2d'),{
+        type:'bar',
+        data:{ labels, datasets:[{ label:'Resultado do Ciclo', data: rows.map(r=> toNum(r.rend_rs)) } ]},
+        options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
+      });
+
+      document.querySelectorAll('[data-dl]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const id = btn.getAttribute('data-dl');
+          const type = btn.getAttribute('data-type');
+          const ch = {chartPatrimonio:charts.patrimonio, chartAportes:charts.aportes, chartResultado:charts.resultado}[id];
+          if(!ch) return alert('Gráfico ainda não disponível.');
+          if(type==='png'){
+            const a = document.createElement('a');
+            a.href = ch.toBase64Image();
+            a.download = id+'.png';
+            a.click();
+          } else {
+            const ds = ch.data.datasets[0] || {data:[]};
+            const labels = ch.data.labels || [];
+            let csv = 'Label,Valor\n';
+            labels.forEach((l,i)=>{ csv += `"${String(l).replace(/"/g,'""')}",${ds.data[i]??''}\n`; });
+            const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = id+'.csv'; a.click(); URL.revokeObjectURL(url);
+          }
+        };
+      });
+    }
+
+    // ===== UI Contexto
+    function syncCtxToUI(){ qs('#ctxMes').value=String(CTX.mes); qs('#ctxAno').value=String(CTX.ano); }
+    function syncUIToCtx(){ const m=Number(qs('#ctxMes').value||CTX.mes); const a=Number(qs('#ctxAno').value||CTX.ano); CTX={ano:a,mes:m}; }
+    qs('#btnCtxAplicar').addEventListener('click', ()=>{ syncUIToCtx(); updateAllCalculations(); updatePatrimonioAndKPIs(); });
+
+    // ===== KPIs por mês/ano
+    function updateAllCalculations(){
+      const {ano,mes}=CTX;
+      const aportesMes = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes));
+      const opcoesMes  = (DATA.opcoes ||[]).filter(o=> inMonth(o.data_venda,ano,mes) || inMonth(o.vencimento,ano,mes) );
+      const encerrMes  = (DATA.encerr ||[]).filter(e=>inMonth(e.data_fechamento,ano,mes));
+
+      const somaAporte = aportesMes.reduce((s,a)=> s + toNum(a.valor), 0);
+      const somaPremio = opcoesMes.reduce((s,o)=> s + toNum(o.premio), 0);
+      const somaResEnc = encerrMes.reduce((s,e)=> s + toNum(e.resultado), 0);
+
+      const resultadoCiclo = somaPremio + somaResEnc;
+      const base = Math.max(1, somaAporte + somaPremio);
+      const rendimentoMesPct = (resultadoCiclo / base) * 100;
+
+      qs('#kpiAporteMes').textContent = money(somaAporte);
+      qs('#kpiPremio').textContent    = money(somaPremio);
+      qs('#kpiResultado').textContent = money(resultadoCiclo);
+      qs('#kpiRendPerc').textContent  = pct(rendimentoMesPct);
+
+      qs('#boxAcoesMes').textContent = somaAporte>0 ? `Valor aportado no mês: ${money(somaAporte)}` : 'Sem dados.';
+      qs('#boxOpcoesMes').innerHTML = opcoesMes.length
+        ? opcoesMes.map(o=>`${o.codigo} • ${o.subjacente} • Prêmio ${money(toNum(o.premio))} • Venc. ${BR(o.vencimento)}`).join('<br>')
+        : 'Sem dados.';
+
+      const calc = { ano, mes, aporte:somaAporte, "rend_r$":resultadoCiclo, "rend_%":rendimentoMesPct, patrimonio:(somaAporte + resultadoCiclo) };
+      const tb = qs('#tbExtrato');
+      tb.innerHTML = `
+        <tr>
+          <td>${String(calc.mes).padStart(2,'0')}/${calc.ano}</td>
+          <td>${money(calc.aporte)}</td>
+          <td>${money(calc["rend_r$"])}</td>
+          <td>${pct(calc["rend_%"])}</td>
+          <td>${money(calc.patrimonio)}</td>
+        </tr>`;
+
+      drawCharts();
+    }
+
+    // ===== Patrimônio líquido (VM ações − MM opções + caixa)
+    function updatePatrimonioAndKPIs(){
+      const carteira = buildCarteiraFromCompras(DATA.compras||[]);
+      const vmAcoes = carteira.reduce((s,a)=> s + toNum(a.vm), 0);
+      const caixa = getCash();
+      const mtmOp = getOptMtm(); // você informa (ex.: 390,00)
+
+      const patrimonioLiquido = vmAcoes - mtmOp + caixa;
+
+      document.getElementById('kpiSaldo').textContent = money(patrimonioLiquido);
+      document.getElementById('badgePatVal').textContent = money(patrimonioLiquido);
+
+      renderCarteira(carteira);
+      renderCash();
+      renderOptMtm();
+    }
+
+    // ===== Fluxo principal
+    async function reloadAll(){
+      const [aportes, compras, opcoes, encerr, mensal] = await Promise.all([
+        apiGet('aportes'), apiGet('compras'), apiGet('opcoes'), apiGet('encerr'), apiGet('mensal')
+      ]);
+      DATA = { aportes, compras, opcoes, encerr, mensal };
+
+      await refreshPrices();
+      updateAllCalculations();
+      updatePatrimonioAndKPIs();
+
+      renderOpcoes(opcoes);
+      renderExtrato(mensal);
+    }
+
+    document.getElementById('btnAtualizarPrecos').addEventListener('click', async ()=>{
+      await refreshPrices();
+      updatePatrimonioAndKPIs();
+      alert('Cotações atualizadas!');
+    });
+
+    setInterval(async ()=>{
+      try { await refreshPrices(); updatePatrimonioAndKPIs(); } catch(e){}
+    }, 60000);
+
+    // Exportar CSV
+    qs('#btnExportCsv').addEventListener('click', ()=>{
+      const rows = DATA.mensal && DATA.mensal.length ? DATA.mensal : buildMonthlyAggFromRaw().map(r=>({ano:r.ano,mes:r.mes,aporte:r.aporte,"rend_r$":r.rend_rs,"rend_%":r.rend_pct,patrimonio:r.patrimonio}));
+      if(!rows.length){ alert('Sem dados para exportar.'); return; }
+      let csv = 'ano,mes,aporte,rend_r$,rend_%,patrimonio\n';
+      rows.forEach(r=>{ csv += `${r.ano},${r.mes},${toNum(r.aporte)},${toNum(r["rend_r$"])||toNum(r.rend_rs)},${toNum(r["rend_%"])||toNum(r.rend_pct)},${toNum(r.patrimonio)}\n`; });
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob); const a=document.createElement('a');
+      a.href = url; a.download = 'mensal.csv'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    // Init
+    (function init(){
+      qs('#ctxMes').value = String(CTX.mes); qs('#ctxAno').value = String(CTX.ano);
+      qs('#exMes').value = String(CTX.mes);  qs('#exAno').value = String(CTX.ano);
+      renderCash();
+      renderOptMtm();
+      reloadAll();
+    })();
+  </script>
+</body>
+</html>
