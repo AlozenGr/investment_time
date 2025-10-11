@@ -23,6 +23,8 @@
     .small{font-size:.85rem}
     .hidden{display:none}
     canvas{width:100%!important;height:280px!important;}
+    .row-ok{background:#ecfdf5;}   /* verde leve */
+    .row-bad{background:#fef2f2;}  /* vermelho leve */
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -230,7 +232,7 @@
       <div class="scroll-x mt-3">
         <table class="table">
           <thead><tr><th>Mês</th><th>Aporte</th><th>Rend. (R$)</th><th>Rend. (%)</th><th>Patrimônio</th></tr></thead>
-        <tbody id="tbExtrato"><tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+          <tbody id="tbExtrato"><tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -380,6 +382,12 @@
     function BR(dateLike){ const d=normalizeISO(dateLike); if(!d) return ''; const dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yy=d.getFullYear(); return `${dd}/${mm}/${yy}`; }
     function toISO(dmy){ const m=/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/.exec(String(dmy||'')); if(!m) return dmy; const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`; }
 
+    // Helpers de data chave
+    const now = new Date();
+    const NOW_Y = now.getFullYear();
+    const NOW_M = now.getMonth()+1;
+    const nowKey = () => `${NOW_Y}-${String(NOW_M).padStart(2,'0')}`;
+
     // ===== Navegação
     qsa('.tabs button').forEach(btn=>btn.addEventListener('click',()=>showPage(btn.dataset.page)));
     function showPage(page){
@@ -405,14 +413,14 @@
     async function refreshPrices(){
       try { await apiPost({ action:'prices/update' }); } catch(e){ }
       try {
-        const prices = await apiGet('prices'); // [{ticker, price, time}]
+        const prices = await apiGet('prices');
         PRICE_MAP = {};
         (prices||[]).forEach(p => { PRICE_MAP[String(p.ticker||'').toUpperCase()] = toPrice(p.price); });
       } catch(e) { console.warn('Falha ao obter preços:', e); }
       return PRICE_MAP;
     }
 
-    // ===== Mapas auxiliares para carteira
+    // ===== Mapas auxiliares carteira
     function mapExercidasPorTicker(opcoes, encerr) {
       const byCode = new Map();
       (opcoes || []).forEach(o => byCode.set(String(o.codigo||''), o));
@@ -463,10 +471,7 @@
       acc.forEach(x => { const abat = toNum(exercidas[x.ticker]); if (abat > 0) x.qtde = Math.max(0, x.qtde - abat); });
 
       const abertas = mapCobertasAbertas(DATA.opcoes);
-      acc.forEach(x => {
-        x.livre = Math.max(0, x.qtde - toNum(abertas[x.ticker]));
-        x.vm    = x.qtde * x.precoAtual;
-      });
+      acc.forEach(x => { x.livre = Math.max(0, x.qtde - toNum(abertas[x.ticker])); x.vm = x.qtde * x.precoAtual; });
 
       return acc;
     }
@@ -496,7 +501,7 @@
       const todayKey = (new Date()).toISOString().substring(0,10);
       tb.innerHTML = opcoes.map(o=>{
         const vencISO = String(o.vencimento||'').substring(0,10);
-        const mostrarAcoes = (String(o.status||'').toLowerCase()==='aberta') && vencISO && vencISO<=todayKey;
+        const mostrarAcoes = (o.status||'')==='Aberta' && vencISO && vencISO<=todayKey;
         const acoes = mostrarAcoes ? `
            <button class="btn secondary text-xs" data-act="fechar" data-cod="${o.codigo}">Fechar</button>
            <button class="btn secondary text-xs" data-act="exercida" data-cod="${o.codigo}">Exercida</button>
@@ -515,64 +520,20 @@
             <td class="flex gap-1">${acoes}</td>
           </tr>`;
       }).join('');
-
-      qsa('#tbOpcoes [data-act]').forEach(b=>{
-        b.addEventListener('click', async e=>{
-          const cod = e.currentTarget.dataset.cod;
-          const act = e.currentTarget.dataset.act;
-          let status_final='Encerrada', resultado=0, preco_acao=0, custo_fechar=0, taxas=0;
-          if(act==='fechar'){
-            preco_acao = toNum(prompt('Preço da ação para fechamento (R$):')||0);
-            custo_fechar = toNum(prompt('Custo para recomprar/fechar (R$):')||0);
-            taxas = toNum(prompt('Taxas (R$):')||0);
-            resultado = toNum(prompt('Resultado líquido (R$):')||0);
-            status_final = 'Encerrada';
-          }else if(act==='exercida'){
-            preco_acao = toNum(prompt('Preço da ação no vencimento (R$):')||0);
-            taxas = toNum(prompt('Taxas (R$):')||0);
-            resultado = toNum(prompt('Resultado líquido após execução (R$):')||0);
-            status_final = 'Exercida';
-          }else{
-            taxas = toNum(prompt('Taxas (R$):')||0);
-            resultado = toNum(prompt('Resultado líquido (R$):')||0);
-            status_final = 'Não Exercida';
-          }
-          const data_fechamento = new Date().toISOString().substring(0,10);
-          await apiPost({ action:'encerrar/create', codigo: cod, data_fechamento, preco_acao, custo_fechar, taxas, status_final, resultado });
-          await reloadAll();
-          alert('Registro salvo!');
-        });
-      });
     }
 
     // ===== Extrato
     function renderExtrato(mensal){
       const tb = qs('#tbExtrato');
       if(!mensal || !mensal.length){ tb.innerHTML = `<tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
-      tb.innerHTML = mensal.map(m=>{
-        const rperc = normalizePerc(m['rend_%']);
-        return `
+      tb.innerHTML = mensal.map(m=>`
         <tr>
           <td>${String(m.mes).padStart(2,'0')}/${m.ano}</td>
           <td>${money(toNum(m.aporte))}</td>
           <td>${money(toNum(m['rend_r$']))}</td>
-          <td>${pct(rperc)}</td>
+          <td>${pct(toNum(m['rend_%']))}</td>
           <td>${money(toNum(m.patrimonio))}</td>
-        </tr>`;
-      }).join('');
-    }
-
-    // ===== Normalização segura de percentuais
-    function normalizePerc(v){
-      let n = toNum(v);
-      // Se vier 6,36% como 6.36, usamos 6.36 direto
-      // Se vier 636 (multiplicado por 100), corrige:
-      if (n > 50) n = n / 100;
-      // Se vier 0.0636, será 0.0636 → 0.0636%. Para exibir em %, multiplicamos só na formatação pct().
-      // Aqui guardamos como 6.36 (valor “em %”, não fração):
-      if (n <= 1 && n > 0) n = n * 100;
-      if (!isFinite(n)) n = 0;
-      return n;
+        </tr>`).join('');
     }
 
     // ===== Caixa e MM Opções (persistidos no navegador)
@@ -609,26 +570,43 @@
     let DATA = { aportes:[], compras:[], opcoes:[], encerr:[], mensal:[] };
     let CTX = { ano:new Date().getFullYear(), mes:new Date().getMonth()+1 };
 
-    // ===== Gráficos (3) + proj mini
+    // ===== Gráficos (3)
     let charts = { patrimonio:null, aportes:null, resultado:null, projMini:null, pjDonut:null, pjBars:null };
-    function destroyChart(c){ if(c){ try{ c.destroy(); }catch(_){}} }
+    function destroyCharts(){
+      Object.values(charts).forEach(c=>{ if(c){ try{ c.destroy(); }catch(_){/*noop*/} } });
+      charts={patrimonio:null, aportes:null, resultado:null, projMini:null, pjDonut:null, pjBars:null };
+    }
+
+    function monthKey(ano, mes){ return `${ano}-${String(mes).padStart(2,'0')}`; }
+
+    // ⇨ AUTO-MÊS ATUAL: garante linha zerada do mês atual se não existir
+    function ensureCurrentMonthRow(rows){
+      const hasNow = rows.some(r => Number(r.ano)===NOW_Y && Number(r.mes)===NOW_M);
+      if(!hasNow){
+        rows.push({ ano:NOW_Y, mes:NOW_M, aporte:0, rend_rs:0, ['rend_r$']:0, ['rend_%']:0, patrimonio:0, premio:0, resultado:0 });
+        rows.sort((a,b)=> a.ano===b.ano ? a.mes-b.mes : a.ano-b.ano);
+      }
+      return rows;
+    }
 
     function buildMonthlyAggFromRaw(){
       const map = new Map();
       function add(key, field, v){ const o = map.get(key) || {ano:+key.split('-')[0], mes:+key.split('-')[1], aporte:0, premio:0, resultado:0}; o[field]+=toNum(v||0); map.set(key,o); }
-      (DATA.aportes||[]).forEach(a=>{ const d=normalizeISO(a.data); if(d){ add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`, 'aporte', a.valor); } });
-      (DATA.opcoes||[]).forEach(o=>{ const d=normalizeISO(o.data_venda); if(d){ add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`, 'premio', o.premio); } });
-      (DATA.encerr||[]).forEach(e=>{ const d=normalizeISO(e.data_fechamento); if(d){ add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`, 'resultado', e.resultado); } });
-      const arr = Array.from(map.values()).sort((a,b)=> a.ano===b.ano ? a.mes-b.mes : a.ano-b.ano);
-      return arr.map(x=>({ ...x, rend_rs: toNum(x.premio) + toNum(x.resultado), rend_pct: ((toNum(x.premio)+toNum(x.resultado))/Math.max(1, toNum(x.aporte) + toNum(x.premio)))*100, patrimonio: toNum(x.aporte) + toNum(x.premio) + toNum(x.resultado) }));
+      (DATA.aportes||[]).forEach(a=>{ const d=normalizeISO(a.data); if(d){ add(monthKey(d.getFullYear(), d.getMonth()+1), 'aporte', a.valor); } });
+      (DATA.opcoes||[]).forEach(o=>{ const d=normalizeISO(o.data_venda); if(d){ add(monthKey(d.getFullYear(), d.getMonth()+1), 'premio', o.premio); } });
+      (DATA.encerr||[]).forEach(e=>{ const d=normalizeISO(e.data_fechamento); if(d){ add(monthKey(d.getFullYear(), d.getMonth()+1), 'resultado', e.resultado); } });
+      let arr = Array.from(map.values()).sort((a,b)=> a.ano===b.ano ? a.mes-b.mes : a.ano-b.ano);
+      arr = arr.map(x=>({ ...x, rend_rs: toNum(x.premio) + toNum(x.resultado), rend_pct: ((toNum(x.premio)+toNum(x.resultado))/Math.max(1, toNum(x.aporte) + toNum(x.premio)))*100, patrimonio: toNum(x.aporte) + toNum(x.premio) + toNum(x.resultado) }));
+      return ensureCurrentMonthRow(arr); // ⇨ AUTO-MÊS ATUAL
     }
     function buildMonthlyFromMensal(){
-      return (DATA.mensal||[]).map(m=>({ ano:+m.ano, mes:+m.mes, aporte:toNum(m.aporte), rend_rs:toNum(m['rend_r$']), rend_pct:normalizePerc(m['rend_%']), patrimonio:toNum(m.patrimonio), premio:0, resultado:0 }))
+      let rows = (DATA.mensal||[]).map(m=>({ ano:+m.ano, mes:+m.mes, aporte:toNum(m.aporte), rend_rs:toNum(m['rend_r$']), rend_pct:toNum(m['rend_%']), patrimonio:toNum(m.patrimonio), premio:0, resultado:0 }))
         .sort((a,b)=> a.ano===b.ano ? a.mes-b.mes : a.ano-b.ano);
+      return ensureCurrentMonthRow(rows); // ⇨ AUTO-MÊS ATUAL
     }
 
     function drawCharts(){
-      destroyChart(charts.patrimonio); destroyChart(charts.aportes); destroyChart(charts.resultado);
+      destroyCharts();
       let rows = buildMonthlyFromMensal();
       if(!rows.length) rows = buildMonthlyAggFromRaw();
       if(!rows.length) return;
@@ -653,6 +631,38 @@
         data:{ labels, datasets:[{ label:'Resultado do Ciclo', data: rows.map(r=> toNum(r.rend_rs)) } ]},
         options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
       });
+
+      // Tabela "Resultados por mês" com cores
+      const tb = qs('#tbMesesResumo');
+      tb.innerHTML = rows.map(r=>{
+        const cls = (toNum(r.rend_pct) >= 5) ? 'row-ok' : (toNum(r.rend_pct) < 4 ? 'row-bad' : '');
+        return `<tr class="${cls}">
+          <td>${String(r.mes).padStart(2,'0')}/${r.ano}</td>
+          <td>${money(r.aporte)}</td>
+          <td>${money(r.rend_rs ?? r['rend_r$'] ?? 0)}</td>
+          <td>${pct(r.rend_pct ?? r['rend_%'] ?? 0)}</td>
+          <td>${money(r.patrimonio || (r.aporte + (r.rend_rs ?? 0)))}</td>
+        </tr>`;
+      }).join('');
+
+      // Projeção mini (12m) baseada na taxa média dos rows
+      const medias = rows.filter(r=>toNum(r.aporte)+toNum(r.rend_rs)>0).map(r=>{
+        const base = Math.max(1, toNum(r.aporte));
+        return (toNum(r.rend_rs)/base)*100;
+      });
+      const taxaMedia = medias.length ? (medias.reduce((a,b)=>a+b,0)/medias.length) : 0;
+      const patAtual = patrimonio[patrimonio.length-1] || 0;
+
+      const projLabels = Array.from({length:12}, (_,i)=> String(i+1).padStart(2,'0'));
+      let p = patAtual, serie=[];
+      for(let i=0;i<12;i++){ p = p * (1 + (taxaMedia/100)); serie.push(p); }
+
+      charts.projMini = new Chart(document.getElementById('chartProjMini').getContext('2d'),{
+        type:'line',
+        data:{ labels:projLabels, datasets:[{ label:'Projeção', data:serie, borderWidth:2, fill:false, tension:.25 }]},
+        options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
+      });
+      qs('#projMiniInfo').textContent = `Taxa média usada: ${pct(taxaMedia)} • Final em 12m: ${money(serie[11]||0)}`;
     }
 
     // ===== UI Contexto
@@ -660,52 +670,7 @@
     function syncUIToCtx(){ const m=Number(qs('#ctxMes').value||CTX.mes); const a=Number(qs('#ctxAno').value||CTX.ano); CTX={ano:a,mes:m}; }
     qs('#btnCtxAplicar').addEventListener('click', ()=>{ syncUIToCtx(); updateAllCalculations(); updatePatrimonioAndKPIs(); });
 
-    // ===== Lista mês a mês + Projeção mini
-    function renderMesesResumo(){
-      const rows = buildMonthlyFromMensal();
-      const tb = qs('#tbMesesResumo');
-      if(!rows.length){ tb.innerHTML = '<tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr>'; return; }
-      tb.innerHTML = rows.map(r=>{
-        const cor = r.rend_pct >= 5 ? 'bg-green-50' : (r.rend_pct < 4 ? 'bg-red-50' : '');
-        return `<tr class="${cor}">
-          <td>${String(r.mes).padStart(2,'0')}/${r.ano}</td>
-          <td>${money(r.aporte)}</td>
-          <td>${money(r.rend_rs)}</td>
-          <td>${pct(r.rend_pct)}</td>
-          <td>${money(r.patrimonio)}</td>
-        </tr>`;
-      }).join('');
-      drawProjMini(rows);
-    }
-
-    function taxaMedia(rows){
-      const arr = (rows||[]).map(r=>r.rend_pct).filter(v=>isFinite(v));
-      if(!arr.length) return 0;
-      const media = arr.reduce((s,v)=>s+v,0)/arr.length;
-      return Math.max(-100, Math.min(100, media));
-    }
-
-    function drawProjMini(rows){
-      destroyChart(charts.projMini);
-      const pat = calcPatrimonioLiquido();
-      const tx = taxaMedia(rows)/100;
-      const meses = 12;
-      let saldo = pat, investido = pat;
-      const labels = [], serie = [];
-      for(let i=1;i<=meses;i++){
-        saldo = saldo * (1+tx);
-        labels.push(String(i).padStart(2,'0'));
-        serie.push(saldo);
-      }
-      charts.projMini = new Chart(document.getElementById('chartProjMini').getContext('2d'),{
-        type:'line',
-        data:{ labels, datasets:[{ label:'Projeção', data:serie, borderWidth:2, fill:false }]},
-        options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
-      });
-      qs('#projMiniInfo').textContent = `Taxa média usada: ${pct(tx*100)} • Final em 12m: ${money(saldo)}`;
-    }
-
-    // ===== KPIs por mês/ano
+    // ===== KPIs / Extrato visual do mês selecionado
     function updateAllCalculations(){
       const {ano,mes}=CTX;
       const aportesMes = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes));
@@ -725,75 +690,39 @@
       qs('#kpiResultado').textContent = money(resultadoCiclo);
       qs('#kpiRendPerc').textContent  = pct(rendimentoMesPct);
 
+      qs('#boxAcoesMes')?.textContent;
+      qs('#boxOpcoesMes')?.innerHTML;
+
+      // Linha “automática” no extrato do mês/ano de referência (mesmo se não houver registro na planilha)
+      const calc = { ano, mes, aporte:somaAporte, "rend_r$":resultadoCiclo, "rend_%":rendimentoMesPct, patrimonio:(somaAporte + resultadoCiclo) };
+      const tb = qs('#tbExtrato');
+      tb.innerHTML = `
+        <tr>
+          <td>${String(calc.mes).padStart(2,'0')}/${calc.ano}</td>
+          <td>${money(calc.aporte)}</td>
+          <td>${money(calc["rend_r$"])}</td>
+          <td>${pct(calc["rend_%"])}</td>
+          <td>${money(calc.patrimonio)}</td>
+        </tr>`;
+
       drawCharts();
-      renderMesesResumo();
     }
 
     // ===== Patrimônio líquido (VM ações − MM opções + caixa)
-    function calcPatrimonioLiquido(){
+    function updatePatrimonioAndKPIs(){
       const carteira = buildCarteiraFromCompras(DATA.compras||[]);
       const vmAcoes = carteira.reduce((s,a)=> s + toNum(a.vm), 0);
       const caixa = getCash();
       const mtmOp = getOptMtm();
-      return vmAcoes - mtmOp + caixa;
-    }
-    function updatePatrimonioAndKPIs(){
-      const carteira = buildCarteiraFromCompras(DATA.compras||[]);
-      const pat = calcPatrimonioLiquido();
-      document.getElementById('kpiSaldo').textContent = money(pat);
-      document.getElementById('badgePatVal').textContent = money(pat);
+      const patrimonioLiquido = vmAcoes - mtmOp + caixa;
+
+      document.getElementById('kpiSaldo').textContent = money(patrimonioLiquido);
+      document.getElementById('badgePatVal').textContent = money(patrimonioLiquido);
+
       renderCarteira(carteira);
       renderCash();
       renderOptMtm();
     }
-
-    // ===== Projeção (aba)
-    function drawProjCharts(){
-      // lê campos
-      const usaPat = qs('#usePatAtual').checked;
-      const aporteInicial = toNum(qs('#pjInicial').value);
-      const taxaMes = toNum(qs('#pjTaxa').value)/100;
-      const aporteMensal = toNum(qs('#pjAporte').value);
-      const meses = parseInt(qs('#pjMeses').value,10)||12;
-
-      let saldo = (usaPat ? calcPatrimonioLiquido() : 0) + aporteInicial;
-      let investido = saldo;
-      const labels = [], inv = [], juros = [];
-      for(let i=1;i<=meses;i++){
-        // aplica juros sobre saldo
-        const jurosMes = saldo * taxaMes;
-        saldo += jurosMes;
-        // aplica aporte no fim do mês
-        saldo += aporteMensal;
-        investido += aporteMensal;
-        labels.push(String(i).padStart(2,'0'));
-        inv.push(investido);
-        juros.push(Math.max(0, saldo - investido));
-      }
-
-      destroyChart(charts.pjDonut); destroyChart(charts.pjBars);
-
-      charts.pjDonut = new Chart(document.getElementById('chartPjDonut').getContext('2d'),{
-        type:'doughnut',
-        data:{ labels:['Valor investido','Valor em juros'], datasets:[{ data:[investido, Math.max(0, saldo - investido)] }]},
-        options:{ responsive:true, plugins:{ legend:{ display:true } } }
-      });
-
-      charts.pjBars = new Chart(document.getElementById('chartPjBars').getContext('2d'),{
-        type:'bar',
-        data:{ labels, datasets:[
-          { label:'Valor investido', data:inv, stack:'s' },
-          { label:'Valor em juros', data:juros, stack:'s' }
-        ]},
-        options:{ responsive:true, plugins:{ legend:{ display:true }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
-      });
-
-      qs('#projFinalInfo').textContent = `Final: ${money(saldo)} • Invest.: ${money(investido)} • Juros: ${money(Math.max(0, saldo - investido))}`;
-    }
-    ['usePatAtual','pjInicial','pjTaxa','pjAporte','pjMeses'].forEach(id=>{
-      document.addEventListener('input', e=>{ if(e.target && e.target.id===id) drawProjCharts(); });
-      document.addEventListener('change', e=>{ if(e.target && e.target.id===id) drawProjCharts(); });
-    });
 
     // ===== Fluxo principal
     async function reloadAll(){
@@ -805,8 +734,9 @@
       await refreshPrices();
       updateAllCalculations();
       updatePatrimonioAndKPIs();
+
       renderOpcoes(opcoes);
-      renderExtrato(mensal);
+      renderExtrato(buildMonthlyFromMensal()); // ⇨ extrato inclui mês atual zerado
     }
 
     document.getElementById('btnAtualizarPrecos').addEventListener('click', async ()=>{
@@ -821,17 +751,76 @@
 
     // Exportar CSV
     qs('#btnExportCsv').addEventListener('click', ()=>{
-      const rows = DATA.mensal && DATA.mensal.length ? DATA.mensal : buildMonthlyAggFromRaw().map(r=>({ano:r.ano,mes:r.mes,aporte:r.aporte,"rend_r$":r.rend_rs,"rend_%":r.rend_pct,patrimonio:r.patrimonio}));
+      const rows = buildMonthlyFromMensal();
       if(!rows.length){ alert('Sem dados para exportar.'); return; }
       let csv = 'ano,mes,aporte,rend_r$,rend_%,patrimonio\n';
-      rows.forEach(r=>{
-        const perc = (r["rend_%"]!=null)? normalizePerc(r["rend_%"]) : normalizePerc(r.rend_pct);
-        csv += `${r.ano},${r.mes},${toNum(r.aporte)},${toNum(r["rend_r$"])||toNum(r.rend_rs)},${perc},${toNum(r.patrimonio)}\n`;
-      });
+      rows.forEach(r=>{ csv += `${r.ano},${r.mes},${toNum(r.aporte)},${toNum(r["rend_r$"])||toNum(r.rend_rs)},${toNum(r["rend_%"])||toNum(r.rend_pct)},${toNum(r.patrimonio)}\n`; });
       const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob); const a=document.createElement('a');
       a.href = url; a.download = 'mensal.csv'; a.click(); URL.revokeObjectURL(url);
     });
+
+    // Extrato “Buscar”/“Aplicar”
+    qs('#btnBuscarExtrato').addEventListener('click', ()=>{
+      const ano = Number(qs('#exAno').value || NOW_Y);
+      const mes = Number(qs('#exMes').value || NOW_M);
+      const linha = buildMonthlyFromMensal().find(r=> Number(r.ano)===ano && Number(r.mes)===mes) || {ano,mes,aporte:0, ['rend_r$']:0, ['rend_%']:0, patrimonio:0};
+      renderExtrato([linha]);
+    });
+    qs('#btnAplicarExtrato').addEventListener('click', async ()=>{
+      alert('Para aplicar no banco, use o formulário Mensal na planilha (esta vista do mês atual é automática).');
+    });
+    qs('#btnSyncCtxFromExtrato').addEventListener('click', ()=>{
+      const ano = Number(qs('#exAno').value || CTX.ano);
+      const mes = Number(qs('#exMes').value || CTX.mes);
+      CTX = { ano, mes };
+      syncCtxToUI();
+      updateAllCalculations();
+    });
+
+    // PROJEÇÃO (aba)
+    function drawProjCharts(){
+      // simples: reusa patrimônio atual como base se marcado
+      const pat = toNum(document.getElementById('badgePatVal').textContent.replace(/[^\d,.-]/g,'').replace('.','').replace(',','.')) || 0;
+      const use = qs('#usePatAtual').checked;
+      const inicialInput = toNum(qs('#pjInicial').value);
+      const inicial = use ? pat : inicialInput;
+
+      const taxa = toNum(qs('#pjTaxa').value);
+      const aporte = toNum(qs('#pjAporte').value);
+      const meses = Number(qs('#pjMeses').value||12);
+
+      let investido = 0, atual = inicial, serieInvest=[], serieJuros=[];
+      for(let i=1;i<=meses;i++){
+        investido += (i===1 ? inicial : 0) + aporte;
+        atual = (i===1 ? inicial : atual) * (1 + taxa/100) + (i>1 ? aporte : 0);
+        serieInvest.push(investido);
+        serieJuros.push(Math.max(0, atual - investido));
+      }
+
+      if (charts.pjDonut) charts.pjDonut.destroy();
+      if (charts.pjBars) charts.pjBars.destroy();
+
+      charts.pjDonut = new Chart(document.getElementById('chartPjDonut').getContext('2d'),{
+        type:'doughnut',
+        data:{ labels:['Valor investido','Valor em juros'], datasets:[{ data:[ investido, Math.max(0, atual - investido) ]}]},
+        options:{ plugins:{ legend:{ position:'bottom' } } }
+      });
+
+      const labels = Array.from({length:meses}, (_,i)=> String(i+1).padStart(2,'0'));
+      charts.pjBars = new Chart(document.getElementById('chartPjBars').getContext('2d'),{
+        type:'bar',
+        data:{ labels, datasets:[
+          { label:'Valor investido', data:serieInvest, stack:'s' },
+          { label:'Valor em juros', data:serieJuros, stack:'s' }
+        ]},
+        options:{ responsive:true, plugins:{ legend:{ position:'bottom' }}, scales:{ y:{ ticks:{ callback:v=> money(v) }}}}
+      });
+
+      qs('#projFinalInfo').textContent = `Final: ${money(atual)} • Invest.: ${money(investido)} • Juros: ${money(Math.max(0, atual-investido))}`;
+    }
+    qsa('#pageProj input, #pageProj select').forEach(el=> el.addEventListener('input', drawProjCharts));
+    qs('#usePatAtual').addEventListener('change', drawProjCharts);
 
     // Init
     (function init(){
@@ -840,7 +829,6 @@
       renderCash();
       renderOptMtm();
       reloadAll();
-      drawProjCharts();
     })();
   </script>
 </body>
