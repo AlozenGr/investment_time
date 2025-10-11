@@ -23,6 +23,9 @@
     .small{font-size:.85rem}
     .hidden{display:none}
     canvas{width:100%!important;height:280px!important;}
+    /* histórico IR */
+    .row-pos{background:#ecfdf5;}   /* verde muito claro */
+    .row-neg{background:#fef2f2;}   /* vermelho muito claro */
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -342,12 +345,13 @@
         <button id="btnIrSyncCtx" class="btn secondary text-xs">Usar mês/ano do Dashboard</button>
       </div>
 
-      <div class="grid md:grid-cols-4 gap-2">
+      <div class="grid md:grid-cols-5 gap-2">
         <div>
           <div class="text-xs text-slate-500 mb-1">Mês</div>
           <select id="irMes" class="input">
             <option value="1">jan</option><option value="2">fev</option><option value="3">mar</option><option value="4">abr</option>
-            <option value="5">mai</option><option value="6">jun</option><option value="7">jul</option><option value="8">ago</option>
+            <option value="5">mai</option><option value="6">junho</option>
+            <option value="7">jul</option><option value="8">ago</option>
             <option value="9">set</option><option value="10">out</option><option value="11">nov</option><option value="12">dez</option>
           </select>
         </div>
@@ -356,8 +360,12 @@
           <input id="irAno" type="number" class="input" placeholder="AAAA">
         </div>
         <div>
-          <div class="text-xs text-slate-500 mb-1">Lucro do mês (Prêmios + Resultados)</div>
+          <div class="text-xs text-slate-500 mb-1">Lucro do mês (R$)</div>
           <input id="irLucro" type="number" step="0.01" class="input" readonly>
+        </div>
+        <div>
+          <div class="text-xs text-slate-500 mb-1">Prejuízo a compensar (R$)</div>
+          <input id="irPrej" type="number" step="0.01" class="input" value="0">
         </div>
         <div>
           <div class="text-xs text-slate-500 mb-1">IR (15%)</div>
@@ -373,20 +381,21 @@
             <div><div class="text-xs text-slate-500">Nascimento</div><input class="input" id="irNasc" value="10/02/1979"></div>
             <div class="col-span-2"><div class="text-xs text-slate-500">Nome</div><input class="input" id="irNome" value="GUSTAVO RODRIGO ALOZEN"></div>
             <div class="col-span-2"><div class="text-xs text-slate-500">Código / Receita</div><input class="input" id="irCod" value="6015 - IRPF - Ganhos Líquidos em Operações em Bolsa"></div>
-            <div><div class="text-xs text-slate-500">Período de apuração (MM/AAAA)</div><input class="input" id="irPeriodo" readonly></div>
+            <div><div class="text-xs text-slate-500">Período apuração (MM/AAAA)</div><input class="input" id="irPeriodo" readonly></div>
             <div><div class="text-xs text-slate-500">Valor principal (R$)</div><input class="input" id="irPrincipal" readonly></div>
           </div>
           <div class="mt-3 flex gap-2">
             <button id="btnIrGerar" class="btn">Gerar DARF na Receita</button>
             <button id="btnIrCopiar" class="btn secondary">Copiar dados</button>
+            <button id="btnIrSalvar" class="btn secondary">Salvar na Planilha</button>
           </div>
-          <p class="text-xs text-slate-500 mt-2">O botão abre o Sicalc em nova aba. Se o site não aceitar pré-preenchimento, use “Copiar dados” e cole nos campos.</p>
+          <p class="text-xs text-slate-500 mt-2">O botão abre o Sicalc em nova aba. Se o site não aceitar pré-preenchimento, use “Copiar dados”. “Salvar na Planilha” grava o mês na aba IR.</p>
         </div>
 
         <div class="card p-4">
           <div class="flex items-center justify-between">
             <h3 class="font-semibold mb-2">Histórico de IR (últimos meses)</h3>
-            <span class="text-xs text-slate-500">Base: <b>Mensal.rend_r$</b> (≥0) × 15%</span>
+            <span class="text-xs text-slate-500">Linhas verdes: lucro ≥ 0 • Vermelhas: prejuízo</span>
           </div>
           <div class="scroll-x">
             <table class="table">
@@ -651,7 +660,6 @@
     }
 
     function drawCharts(){
-      // principais
       if (charts.patrimonio) charts.patrimonio.destroy();
       if (charts.aportes) charts.aportes.destroy();
       if (charts.resultado) charts.resultado.destroy();
@@ -677,10 +685,9 @@
       });
     }
 
-    // Projeção mini (12m) — simples: usa media % + patrimônio atual
+    // Projeção mini
     function drawProjMini(){
       if (charts.projMini) charts.projMini.destroy();
-      // média % a partir de mensal
       const rows = buildMonthlyFromMensal();
       const taxas = rows.map(r => toNum(r.rend_pct)).filter(v => isFinite(v));
       const media = taxas.length ? taxas.reduce((a,b)=>a+b,0)/taxas.length : 0;
@@ -722,11 +729,6 @@
       qs('#kpiResultado').textContent = money(resultadoCiclo);
       qs('#kpiRendPerc').textContent  = pct(rendimentoMesPct);
 
-      qs('#boxAcoesMes') && (qs('#boxAcoesMes').textContent = somaAporte>0 ? `Valor aportado no mês: ${money(somaAporte)}` : 'Sem dados.');
-      qs('#boxOpcoesMes') && (qs('#boxOpcoesMes').innerHTML = opcoesMes.length
-        ? opcoesMes.map(o=>`${o.codigo} • ${o.subjacente} • Prêmio ${money(toNum(o.premio))} • Venc. ${BR(o.vencimento)}`).join('<br>')
-        : 'Sem dados.');
-
       const calc = { ano, mes, aporte:somaAporte, "rend_r$":resultadoCiclo, "rend_%":rendimentoMesPct, patrimonio:(somaAporte + resultadoCiclo) };
       const tb = qs('#tbExtrato');
       if (tb) {
@@ -753,7 +755,6 @@
       return vmAcoes - mtmOp + caixa;
     }
 
-    // ===== Patrimônio + renders
     function updatePatrimonioAndKPIs(){
       const carteira = buildCarteiraFromCompras(DATA.compras||[]);
       const pl = currentPatrimonio();
@@ -765,27 +766,30 @@
     }
 
     // ===== IR (DARF)
-    function calcLucroMes(ano, mes){
-      // Preferir tabela Mensal (rend_r$) se existir
+    // lucro bruto (pode ser negativo) do mês
+    function calcLucroMesRaw(ano, mes){
       const reg = (DATA.mensal||[]).find(m => Number(m.ano)===Number(ano) && Number(m.mes)===Number(mes));
-      if (reg && reg['rend_r$'] != null) return Math.max(0, toNum(reg['rend_r$']));
-      // Fallback: calc local (prêmios + encerramentos)
+      if (reg && reg['rend_r$'] != null) return toNum(reg['rend_r$']);
       const prem = (DATA.opcoes||[]).filter(o=> inMonth(o.data_venda,ano,mes) || inMonth(o.vencimento,ano,mes))
                                     .reduce((s,o)=> s + toNum(o.premio), 0);
       const enc  = (DATA.encerr||[]).filter(e=> inMonth(e.data_fechamento,ano,mes))
                                     .reduce((s,e)=> s + toNum(e.resultado), 0);
-      return Math.max(0, prem + enc);
+      return prem + enc;
     }
 
     function updateIrPanel(){
       const ano = Number(qs('#irAno').value || CTX.ano);
       const mes = Number(qs('#irMes').value || CTX.mes);
-      const lucro = calcLucroMes(ano, mes);
-      const ir = +(lucro * 0.15).toFixed(2);
-      qs('#irLucro').value = String(lucro.toFixed(2));
-      qs('#irValor').value = String(ir.toFixed(2));
+      const preju = toNum(qs('#irPrej').value || 0);
+      const lucroRaw = calcLucroMesRaw(ano, mes);
+      const base = Math.max(0, lucroRaw - preju);
+      const ir = +(base * 0.15).toFixed(2);
+
+      qs('#irLucro').value = Number(lucroRaw).toFixed(2);
+      qs('#irValor').value = ir.toFixed(2);
       qs('#irPeriodo').value = `${String(mes).padStart(2,'0')}/${ano}`;
-      qs('#irPrincipal').value = String(ir.toFixed(2));
+      qs('#irPrincipal').value = ir.toFixed(2);
+
       renderIrHist();
     }
 
@@ -795,15 +799,16 @@
       let rows = buildMonthlyFromMensal();
       if(!rows.length) rows = buildMonthlyAggFromRaw();
       if(!rows.length){ tb.innerHTML = `<tr><td colspan="4" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
-      const ult = rows.slice(-12); // últimos 12
+      const ult = rows.slice(-12);
       tb.innerHTML = ult.map(r=>{
-        const lucro = Math.max(0, toNum(r.rend_rs ?? r['rend_r$'] ?? 0));
-        const ir = lucro * 0.15;
-        return `<tr>
+        const lucro = toNum(r.rend_rs ?? r['rend_r$'] ?? 0);
+        const ir = Math.max(0, lucro) * 0.15;
+        const cls = lucro >= 0 ? 'row-pos' : 'row-neg';
+        return `<tr class="${cls}">
           <td>${String(r.mes).padStart(2,'0')}/${r.ano}</td>
           <td>${money(lucro)}</td>
           <td>${money(ir)}</td>
-          <td>Pendente</td>
+          <td>${lucro>=0 ? 'Lucro' : 'Prejuízo'}</td>
         </tr>`;
       }).join('');
     }
@@ -813,32 +818,53 @@
       qs('#irAno').value = String(CTX.ano);
       updateIrPanel();
     });
-    ['#irMes','#irAno'].forEach(id => qs(id).addEventListener('change', updateIrPanel));
+    ['#irMes','#irAno','#irPrej'].forEach(id => qs(id).addEventListener('change', updateIrPanel));
 
+    // Abre páginas do Sicalc
     qs('#btnIrGerar').addEventListener('click', ()=>{
-      // abre o Sicalc (contribuinte) em nova aba
       window.open('https://sicalc.receita.economia.gov.br/sicalc/rapido/contribuinte','_blank');
-      // também abrimos a tela de cálculo (para referência)
       window.open('https://sicalc.receita.economia.gov.br/sicalc/rapido/calculo','_blank');
     });
 
+    // Copia dados para fácil preenchimento
     qs('#btnIrCopiar').addEventListener('click', async ()=>{
-      const pacote = {
-        cpf: qs('#irCpf').value,
-        nome: qs('#irNome').value,
-        nasc: qs('#irNasc').value,
-        receita: '6015',
-        periodo: qs('#irPeriodo').value,
-        valor_principal: qs('#irPrincipal').value
-      };
-      const texto = `CPF: ${pacote.cpf}
-Nome: ${pacote.nome}
-Nascimento: ${pacote.nasc}
+      const texto = `CPF: ${qs('#irCpf').value}
+Nome: ${qs('#irNome').value}
+Nascimento: ${qs('#irNasc').value}
 Receita: 6015 - IRPF - Ganhos Líquidos em Operações em Bolsa
-Período de apuração: ${pacote.periodo}
-Valor principal (R$): ${pacote.valor_principal}`;
+Período de apuração: ${qs('#irPeriodo').value}
+Valor principal (R$): ${qs('#irPrincipal').value}`;
       try { await navigator.clipboard.writeText(texto); alert('Dados copiados! Agora cole no Sicalc.'); }
       catch(e){ alert('Não foi possível copiar automaticamente. Selecione e copie manualmente:\n\n'+texto); }
+    });
+
+    // >>> SALVAR NA PLANILHA – aba IR
+    qs('#btnIrSalvar').addEventListener('click', async ()=>{
+      const ano = Number(qs('#irAno').value || CTX.ano);
+      const mes = Number(qs('#irMes').value || CTX.mes);
+      const lucroRaw = toNum(qs('#irLucro').value);
+      const preju = toNum(qs('#irPrej').value);
+      const base = Math.max(0, lucroRaw - preju);
+      const ir = +(base * 0.15).toFixed(2);
+
+      try{
+        await apiPost({
+          action: 'ir/upsert',
+          competencia: `${String(mes).padStart(2,'0')}/${ano}`,
+          regime: 'ME',
+          aliquota: 15,
+          premios: 0,               // lucro consolidado enviado em "resultados"
+          resultados: lucroRaw,
+          prejuizo_comp: preju,
+          ir_retido: 0,
+          darf: '',
+          pago_em: '',
+          obs: 'Gerado pelo painel'
+        });
+        alert('IR do mês salvo na aba IR da planilha!');
+      }catch(e){
+        alert('Falha ao salvar na planilha: ' + (e&&e.message?e.message:e));
+      }
     });
 
     // ===== Fluxo principal
