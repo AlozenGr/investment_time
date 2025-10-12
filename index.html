@@ -196,7 +196,11 @@
       </div>
       <div class="card p-4">
         <div class="flex items-center justify-between">
-          <h3 class="font-semibold">Opções Cobertas</h3>
+          <h3 class="font-semibold">
+            Opções Cobertas
+            <!-- BOTÃO NOVO: corrigir data de venda -->
+            <button id="btnFixDataVenda" class="ml-2 text-xs underline text-sky-700">Corrigir data de venda</button>
+          </h3>
           <div class="text-xs text-slate-500">Abertas • Encerradas</div>
         </div>
         <div class="scroll-x mt-2">
@@ -446,7 +450,7 @@
       qs('#page'+page.charAt(0).toUpperCase()+page.slice(1)).classList.remove('hidden');
       qsa('.tabs button').forEach(b=>b.classList.remove('active'));
       qs(`.tabs button[data-page="${page}"]`).classList.add('active');
-      if (page==='proj') drawProjCharts(); // garantir render ao abrir a Projeção
+      if (page==='proj') drawProjCharts();
     }
 
     // ===== API
@@ -464,7 +468,7 @@
     async function refreshPrices(){
       try { await apiPost({ action:'prices/update' }); } catch(e){ }
       try {
-        const prices = await apiGet('prices'); // [{ticker, price, time}]
+        const prices = await apiGet('prices');
         PRICE_MAP = {};
         (prices||[]).forEach(p => { PRICE_MAP[String(p.ticker||'').toUpperCase()] = toPrice(p.price); });
       } catch(e) { console.warn('Falha ao obter preços:', e); }
@@ -631,12 +635,9 @@
     let DATA = { aportes:[], compras:[], opcoes:[], encerr:[], mensal:[] };
     let CTX = { ano:new Date().getFullYear(), mes:new Date().getMonth()+1 };
 
-    // ===== Gráficos (principais + mini + projeção)
+    // ===== Gráficos (placeholder proj/mini + principais)
     let charts = { patrimonio:null, aportes:null, resultado:null, projMini:null, pjDonut:null, pjBars:null };
-    function destroyCharts(){
-      Object.values(charts).forEach(c=>{ if(c){ c.destroy(); } });
-      charts={patrimonio:null, aportes:null, resultado:null, projMini:null, pjDonut:null, pjBars:null};
-    }
+    function destroyCharts(){ Object.values(charts).forEach(c=>{ if(c){ c.destroy(); } }); charts={patrimonio:null, aportes:null, resultado:null, projMini:null, pjDonut:null, pjBars:null}; }
 
     function monthKey(ano, mes){ return `${ano}-${String(mes).padStart(2,'0')}`; }
     function buildMonthlyAggFromRaw(){
@@ -679,7 +680,7 @@
       });
     }
 
-    // Projeção mini (12m) — usa média % + patrimônio atual
+    // Projeção mini (12m)
     function drawProjMini(){
       if (charts.projMini) charts.projMini.destroy();
       const rows = buildMonthlyFromMensal();
@@ -737,7 +738,10 @@
 
       drawCharts();
       drawProjMini();
-      updateIrPanel(); // mantém IR sincronizado
+      updateIrPanel();
+
+      // CHAMADA OPCIONAL DO DEBUG ↓ (ative com window.__debug = true no console)
+      if (window.__debug) debugMonth(ano, mes);
     }
 
     function currentPatrimonio(){
@@ -757,83 +761,6 @@
       renderCarteira(carteira);
       renderCash();
       renderOptMtm();
-    }
-
-    // =================== PROJEÇÃO (aba) ===================
-    function drawProjCharts(){
-      // ler entradas
-      const meses = Math.max(1, Number(qs('#pjMeses').value || 12));
-      const taxa  = toNum(qs('#pjTaxa').value || 0) / 100; // ao mês
-      const aporteMensal = toNum(qs('#pjAporte').value || 0);
-      let inicial;
-      const usarPat = qs('#usePatAtual').checked;
-
-      if (usarPat){
-        inicial = currentPatrimonio();
-        qs('#pjInicial').value = String(inicial.toFixed ? inicial.toFixed(2) : inicial);
-        qs('#pjInicial').setAttribute('disabled','disabled');
-      } else {
-        qs('#pjInicial').removeAttribute('disabled');
-        inicial = toNum(qs('#pjInicial').value || 0);
-      }
-
-      // construir séries
-      const labels = Array.from({length:meses}, (_,i)=> String(i+1).padStart(2,'0'));
-      const serieTotal = [];
-      const serieInvestido = [];
-      const serieJuros = [];
-
-      let total = inicial;
-      for (let i=0;i<meses;i++){
-        // capitaliza
-        total = total * (1 + taxa);
-        // aporte ao final do mês
-        total += aporteMensal;
-
-        const investido = inicial + aporteMensal*(i+1);
-        const juros = Math.max(0, total - investido);
-
-        serieTotal.push(total);
-        serieInvestido.push(investido);
-        serieJuros.push(juros);
-      }
-
-      // Donut (composição final)
-      if (charts.pjDonut) charts.pjDonut.destroy();
-      const finalInvestido = serieInvestido[serieInvestido.length-1] || 0;
-      const finalJuros     = serieJuros[serieJuros.length-1] || 0;
-      charts.pjDonut = new Chart(document.getElementById('chartPjDonut').getContext('2d'), {
-        type:'doughnut',
-        data:{ labels:['Investido','Juros'],
-               datasets:[{ data:[finalInvestido, finalJuros] }]},
-        options:{ responsive:true, plugins:{ legend:{ position:'bottom' } } }
-      });
-
-      // Barras empilhadas (investido × juros)
-      if (charts.pjBars) charts.pjBars.destroy();
-      charts.pjBars = new Chart(document.getElementById('chartPjBars').getContext('2d'),{
-        type:'bar',
-        data:{
-          labels,
-          datasets:[
-            { label:'Investido', data:serieInvestido, stack:'stack1' },
-            { label:'Juros',     data:serieJuros,     stack:'stack1' }
-          ]
-        },
-        options:{
-          responsive:true,
-          plugins:{ legend:{ position:'bottom' } },
-          scales:{
-            x:{ stacked:true },
-            y:{ stacked:true, ticks:{ callback:v=> money(v) } }
-          }
-        }
-      });
-
-      // texto resumo
-      const totalFinal = serieTotal[serieTotal.length-1] || 0;
-      qs('#projFinalInfo').textContent =
-        `Final: ${money(totalFinal)} • Investido: ${money(finalInvestido)} • Juros: ${money(finalJuros)}`;
     }
 
     // ===== IR (DARF)
@@ -891,22 +818,118 @@
     });
 
     qs('#btnIrCopiar').addEventListener('click', async ()=>{
-      const pacote = {
-        cpf: qs('#irCpf').value,
-        nome: qs('#irNome').value,
-        nasc: qs('#irNasc').value,
-        receita: '6015',
-        periodo: qs('#irPeriodo').value,
-        valor_principal: qs('#irPrincipal').value
-      };
-      const texto = `CPF: ${pacote.cpf}
-Nome: ${pacote.nome}
-Nascimento: ${pacote.nasc}
+      const texto = `CPF: ${qs('#irCpf').value}
+Nome: ${qs('#irNome').value}
+Nascimento: ${qs('#irNasc').value}
 Receita: 6015 - IRPF - Ganhos Líquidos em Operações em Bolsa
-Período de apuração: ${pacote.periodo}
-Valor principal (R$): ${pacote.valor_principal}`;
+Período de apuração: ${qs('#irPeriodo').value}
+Valor principal (R$): ${qs('#irPrincipal').value}`;
       try { await navigator.clipboard.writeText(texto); alert('Dados copiados! Agora cole no Sicalc.'); }
       catch(e){ alert('Não foi possível copiar automaticamente. Selecione e copie manualmente:\n\n'+texto); }
+    });
+
+    // ====== NOVO: Corrigir data de venda via backend (opcoes/update)
+    document.addEventListener('click', async (e)=>{
+      if (e.target && e.target.id === 'btnFixDataVenda'){
+        const cod = prompt('Informe o CÓDIGO da opção (ex.: PCARJ413):');
+        if (!cod) return;
+        const data = prompt('Data da VENDA (dd/mm/aaaa). Ex.: 19/09/2025:');
+        if (!data) return;
+        const op = (DATA.opcoes||[]).find(x => String(x.codigo).toUpperCase() === String(cod).toUpperCase());
+        if (!op){ alert('Código não encontrado nas opções.'); return; }
+        try{
+          await apiPost({ action:'opcoes/update', id: op.id, patch: { data_venda: toISO(data) } });
+          await reloadAll();
+          alert(`Data de venda atualizada para ${cod}: ${data}`);
+        }catch(err){
+          alert('Falha ao atualizar: '+ err);
+        }
+      }
+    });
+
+    // ====== NOVO: Diagnóstico de mês (console)
+    function debugMonth(ano, mes){
+      const fmt = v => (v ?? '').toString().substring(0,10);
+      const aportesMes = (DATA.aportes||[]).filter(a=>inMonth(a.data,ano,mes));
+      const opcoesMes  = (DATA.opcoes ||[]).filter(o=> inMonth(o.data_venda,ano,mes) || inMonth(o.vencimento,ano,mes));
+      const encerrMes  = (DATA.encerr ||[]).filter(e=>inMonth(e.data_fechamento,ano,mes));
+
+      console.log('--- DEBUG MÊS ---', `${String(mes).padStart(2,'0')}/${ano}`);
+      console.table(aportesMes.map(a=>({data: fmt(a.data), valor: toNum(a.valor)})));
+      console.table(opcoesMes.map(o=>({
+        codigo: o.codigo, sub: o.subjacente,
+        data_venda: fmt(o.data_venda), venc: fmt(o.vencimento),
+        premio: toNum(o.premio),
+        criterio: inMonth(o.data_venda,ano,mes) ? 'data_venda' : (inMonth(o.vencimento,ano,mes)?'vencimento':'(fora)')
+      })));
+      console.table(encerrMes.map(e=>({codigo:e.codigo, data_fechamento:fmt(e.data_fechamento), resultado:toNum(e.resultado)})));
+      const somaAporte = aportesMes.reduce((s,a)=> s + toNum(a.valor), 0);
+      const somaPremio = opcoesMes.reduce((s,o)=> s + toNum(o.premio), 0);
+      const somaResEnc = encerrMes.reduce((s,e)=> s + toNum(e.resultado), 0);
+      console.log('Totais => Aporte:', somaAporte, 'Premio:', somaPremio, 'Encerr:', somaResEnc);
+    }
+    // Ative pelo console: window.__debug = true
+
+    // ===== Projeção (aba)
+    function drawProjCharts(){
+      // Donut + Barras a partir dos inputs
+      const capitalInicial = (qs('#usePatAtual').checked ? currentPatrimonio() : 0) + toNum(qs('#pjInicial').value);
+      const taxa = toNum(qs('#pjTaxa').value)/100;
+      const aporte = toNum(qs('#pjAporte').value);
+      const meses = Number(qs('#pjMeses').value || 12);
+
+      // série mensal
+      let saldo = capitalInicial;
+      const labels = [];
+      const investidos = [];
+      const juros = [];
+      let somaInvest = capitalInicial;
+
+      for(let i=1;i<=meses;i++){
+        labels.push(String(i).padStart(2,'0'));
+        const rend = saldo * taxa;
+        saldo += rend + aporte;
+        somaInvest += aporte;
+        investidos.push(somaInvest);
+        juros.push(Math.max(0, saldo - somaInvest));
+      }
+
+      // donut
+      if (charts.pjDonut) charts.pjDonut.destroy();
+      charts.pjDonut = new Chart(document.getElementById('chartPjDonut').getContext('2d'),{
+        type:'doughnut',
+        data:{ labels:['Valor investido','Valor em juros'], datasets:[{ data:[somaInvest, Math.max(0, saldo - somaInvest)] }]},
+        options:{ plugins:{ legend:{ display:true } } }
+      });
+
+      // barras empilhadas
+      if (charts.pjBars) charts.pjBars.destroy();
+      charts.pjBars = new Chart(document.getElementById('chartPjBars').getContext('2d'),{
+        type:'bar',
+        data:{
+          labels,
+          datasets:[
+            { label:'Valor investido', data:investidos, stack:'x' },
+            { label:'Valor em juros', data:juros, stack:'x' }
+          ]
+        },
+        options:{
+          responsive:true,
+          plugins:{ legend:{ display:true } },
+          scales:{ y:{ ticks:{ callback:v=> money(v) } } }
+        }
+      });
+
+      qs('#projFinalInfo').textContent = `Final: ${money(saldo)} • Invest.: ${money(somaInvest)} • Juros: ${money(Math.max(0, saldo - somaInvest))}`;
+    }
+
+    ['#pjInicial','#pjTaxa','#pjAporte','#pjMeses','#usePatAtual'].forEach(id=>{
+      document.addEventListener('change', e=>{
+        if (e.target && ('#'+e.target.id)===id) drawProjCharts();
+      });
+      document.addEventListener('input', e=>{
+        if (e.target && ('#'+e.target.id)===id) drawProjCharts();
+      });
     });
 
     // ===== Fluxo principal
@@ -920,20 +943,12 @@ Valor principal (R$): ${pacote.valor_principal}`;
       updatePatrimonioAndKPIs();
       renderOpcoes(opcoes);
       renderExtrato(mensal);
-
       // IR default
       qs('#irMes').value = String(CTX.mes);
       qs('#irAno').value = String(CTX.ano);
       updateIrPanel();
-
-      // Projeção — garantir estado inicial coerente
-      if (qs('#usePatAtual').checked){
-        const pat = currentPatrimonio();
-        qs('#pjInicial').value = String(pat.toFixed ? pat.toFixed(2) : pat);
-        qs('#pjInicial').setAttribute('disabled','disabled');
-      }
+      // projeção
       drawProjCharts();
-      drawProjMini();
     }
 
     document.getElementById('btnAtualizarPrecos').addEventListener('click', async ()=>{
@@ -955,22 +970,6 @@ Valor principal (R$): ${pacote.valor_principal}`;
       const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob); const a=document.createElement('a');
       a.href = url; a.download = 'mensal.csv'; a.click(); URL.revokeObjectURL(url);
-    });
-
-    // ===== Listeners Projeção
-    ['#pjInicial','#pjTaxa','#pjAporte','#pjMeses'].forEach(id=>{
-      qs(id).addEventListener('input', drawProjCharts);
-      qs(id).addEventListener('change', drawProjCharts);
-    });
-    qs('#usePatAtual').addEventListener('change', ()=>{
-      if (qs('#usePatAtual').checked){
-        const pat = currentPatrimonio();
-        qs('#pjInicial').value = String(pat.toFixed ? pat.toFixed(2) : pat);
-        qs('#pjInicial').setAttribute('disabled','disabled');
-      } else {
-        qs('#pjInicial').removeAttribute('disabled');
-      }
-      drawProjCharts();
     });
 
     // Init
