@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root{ --card-bg:#fff; --card-br:#e5e7eb; }
-    .card{background:var(--card-bg); border:1px solid var(--card-br); border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.04);} 
+    .card{background:var(--card-bg); border:1px solid var(--card-br); border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.04);}
     .input{border:1px solid #cbd5e1; border-radius:10px; padding:.65rem .85rem; width:100%;}
     .btn{border:1px solid #0ea5e9; background:#0284c7; color:#fff; border-radius:10px; padding:.6rem 1rem; font-weight:600;}
     .btn.secondary{background:#fff; color:#0f172a; border-color:#cbd5e1;}
@@ -28,7 +28,8 @@
 <body class="bg-slate-50 text-slate-800">
 
   <!-- Badge fixo de Patrimônio -->
-  <div id="badgePatrimonio" class="fixed top-3 right-3 z-30 bg-slate-900 text-white rounded-xl px-3 py-2 text-sm shadow-lg">
+  <div id="badgePatrimonio"
+       class="fixed top-3 right-3 z-30 bg-slate-900 text-white rounded-xl px-3 py-2 text-sm shadow-lg">
     Patrimônio: <span id="badgePatVal">R$ 0,00</span>
   </div>
 
@@ -119,20 +120,6 @@
       </div>
     </section>
 
-    <!-- Widget de cotações (Novo) -->
-    <section class="card p-4">
-      <div class="flex items-center justify-between">
-        <h3 class="font-semibold">Cotações atuais</h3>
-        <div class="text-xs text-slate-500">Fonte: endpoint de preços • <span id="quotesUpdated">–</span></div>
-      </div>
-      <div class="scroll-x mt-2">
-        <table class="table">
-          <thead><tr><th>Ticker</th><th>Último</th><th>Atualizado</th></tr></thead>
-          <tbody id="tbQuotes"><tr><td colspan="3" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
-        </table>
-      </div>
-    </section>
-
     <!-- Gráficos principais -->
     <section class="grid md:grid-cols-3 gap-3">
       <div class="card p-4">
@@ -168,25 +155,27 @@
     </section>
 
     <!-- Mês a mês (cores) + Projeção rápida -->
-    <section class="card p-4">
-      <div class="flex items-center justify-between">
-        <h3 class="font-semibold">Resultados por mês</h3>
-        <div class="text-xs text-slate-500">Verde ≥ 5% • Vermelho &lt; 4%</div>
+    <section class="grid md:grid-cols-2 gap-3">
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Resultados por mês</h3>
+          <div class="text-xs text-slate-500">Verde ≥ 5% • Vermelho &lt; 4%</div>
+        </div>
+        <div class="scroll-x mt-2">
+          <table class="table w-full">
+            <thead><tr><th>Mês</th><th>Aporte</th><th>Rend. (R$)</th><th>Rend. (%)</th><th>Patrimônio</th></tr></thead>
+            <tbody id="tbMesesResumo"><tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+          </table>
+        </div>
       </div>
-      <div class="scroll-x mt-2">
-        <table class="table w-full">
-          <thead><tr><th>Mês</th><th>Aporte</th><th>Rend. (R$)</th><th>Rend. (%)</th><th>Patrimônio</th></tr></thead>
-          <tbody id="tbMesesResumo"><tr><td colspan="5" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
-        </table>
+      <div class="card p-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Projeção rápida (12m)</h3>
+          <div class="text-xs text-slate-500">Base: Patrimônio atual e taxa média</div>
+        </div>
+        <canvas id="chartProjMini"></canvas>
+        <div class="text-xs text-slate-500 mt-2" id="projMiniInfo"></div>
       </div>
-    </section>
-    <section class="card p-4">
-      <div class="flex items-center justify-between">
-        <h3 class="font-semibold">Projeção rápida (12m)</h3>
-        <div class="text-xs text-slate-500">Base: Patrimônio atual e taxa média</div>
-      </div>
-      <canvas id="chartProjMini"></canvas>
-      <div class="text-xs text-slate-500 mt-2" id="projMiniInfo"></div>
     </section>
 
     <!-- Ações/Opções -->
@@ -200,11 +189,14 @@
           <table class="table">
             <thead><tr>
               <th>Ticker</th><th>Qtde</th><th>Preço Médio</th><th>Preço Atual</th><th>VM</th><th>Livre</th>
+              <!-- NOVO: coluna de ação -->
+              <th>Ação</th>
             </tr></thead>
-            <tbody id="tbCarteira"><tr><td colspan="6" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
+            <tbody id="tbCarteira"><tr><td colspan="7" class="text-slate-500 text-sm">Sem dados.</td></tr></tbody>
           </table>
         </div>
       </div>
+
       <div class="card p-4">
         <div class="flex items-center justify-between">
           <h3 class="font-semibold">Opções Cobertas</h3>
@@ -448,6 +440,7 @@
     function inMonth(dateLike, ano, mes){ const d=normalizeISO(dateLike); return !!d && d.getFullYear()===Number(ano) && (d.getMonth()+1)===Number(mes); }
     function BR(dateLike){ const d=normalizeISO(dateLike); if(!d) return ''; const dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yy=d.getFullYear(); return `${dd}/${mm}/${yy}`; }
     function toISO(dmy){
+      // aceita dd/mm/aaaa e já passa iso direto se vier aaaa-mm-dd
       if (/^\d{4}-\d{2}-\d{2}$/.test(String(dmy||''))) return dmy;
       const m=/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/.exec(String(dmy||'')); if(!m) return dmy;
       const [_,dd,mm,yyyy]=m; return `${yyyy}-${mm}-${dd}`;
@@ -480,41 +473,19 @@
     }
 
     // ===== Preços
-    let PRICE_MAP = {};           // { TICKER: price }
-    let PRICES_RAW = [];          // [{ticker, price, time}]
-    let PRICES_UPDATED_AT = null; // Date string
-
+    let PRICE_MAP = {};
     async function refreshPrices(){
-      try { await apiPost({ action:'prices/update' }); } catch(e){ /* opcional */ }
+      try { await apiPost({ action:'prices/update' }); } catch(e){ }
       try {
         const prices = await apiGet('prices'); // [{ticker, price, time}]
-        PRICES_RAW = prices||[];
         PRICE_MAP = {};
-        PRICES_RAW.forEach(p => { PRICE_MAP[String(p.ticker||'').toUpperCase()] = toPrice(p.price); });
-        PRICES_UPDATED_AT = (PRICES_RAW[0]?.time) ? new Date(PRICES_RAW[0].time).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
-        renderQuotes();
+        (prices||[]).forEach(p => { PRICE_MAP[String(p.ticker||'').toUpperCase()] = toPrice(p.price); });
       } catch(e) { console.warn('Falha ao obter preços:', e); }
       return PRICE_MAP;
     }
 
-    function renderQuotes(){
-      const tb = qs('#tbQuotes'); const ts = qs('#quotesUpdated');
-      ts.textContent = PRICES_UPDATED_AT || '—';
-      // Mostrar apenas tickers presentes na carteira (se houver), senão todos
-      let tickers = new Set((DATA.compras||[]).map(c => String(c.ticker||'').toUpperCase()));
-      if (!tickers.size) PRICES_RAW.forEach(p=> tickers.add(String(p.ticker||'').toUpperCase()));
-      const rows = Array.from(tickers).map(tk => {
-        const row = PRICES_RAW.find(p => String(p.ticker||'').toUpperCase()===tk);
-        const last = row ? toPrice(row.price) : (PRICE_MAP[tk]||0);
-        const when = row?.time ? new Date(row.time).toLocaleString('pt-BR') : (PRICES_UPDATED_AT||'—');
-        return `<tr><td>${tk}</td><td>${money(last)}</td><td>${when}</td></tr>`;
-      });
-      tb.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="3" class="text-slate-500 text-sm">Sem dados.</td></tr>';
-    }
-
     // ===== Mapas auxiliares
     function mapExercidasPorTicker(opcoes, encerr) {
-      // Soma a qtde exercida por TICKER, para abater da carteira
       const byCode = new Map();
       (opcoes || []).forEach(o => byCode.set(String(o.codigo||''), o));
       const out = {};
@@ -556,30 +527,26 @@
         x.precoAtual = last > 0 ? last : (x.precoAtual || pr || 0);
       });
 
-      // Abate automaticamente as ações exercidas (com base no histórico de encerramento)
       const exercidas = mapExercidasPorTicker(DATA.opcoes, DATA.encerr);
-      acc.forEach(x => {
-        const abat = toNum(exercidas[x.ticker]);
-        if (abat > 0) x.qtde = Math.max(0, x.qtde - abat);
-      });
+      acc.forEach(x => { const abat = toNum(exercidas[x.ticker]); if (abat > 0) x.qtde = Math.max(0, x.qtde - abat); });
 
       const abertas = mapCobertasAbertas(DATA.opcoes);
       acc.forEach(x => {
         x.livre = Math.max(0, x.qtde - toNum(abertas[x.ticker]));
         x.vm    = x.qtde * x.precoAtual;
       });
-
-      // NOVO: não exibir papéis com qtde 0 (somem da carteira visual)
-      return acc.filter(x => toNum(x.qtde) > 0);
+      return acc;
     }
 
+    // *** REVISADO — renderCarteira com botões "Exercida" e "Vendida"
     function renderCarteira(carteira){
       const tb = document.getElementById('tbCarteira');
-      if(!carteira || !carteira.length){
-        tb.innerHTML = '<tr><td colspan="6" class="text-slate-500 text-sm">Sem dados.</td></tr>';
+      const list = (carteira||[]).filter(a => toNum(a.qtde) > 0); // esconde zeradas
+      if(!list.length){
+        tb.innerHTML = '<tr><td colspan="7" class="text-slate-500 text-sm">Sem dados.</td></tr>';
         return;
       }
-      tb.innerHTML = carteira.map(a => `
+      tb.innerHTML = list.map(a => `
         <tr>
           <td>${a.ticker}</td>
           <td>${toNum(a.qtde)}</td>
@@ -587,18 +554,50 @@
           <td>${money(a.precoAtual)}</td>
           <td>${money(a.vm)}</td>
           <td>${toNum(a.livre)}</td>
+          <td class="flex gap-1">
+            <button class="btn secondary text-xs" data-acao="exercida" data-tk="${a.ticker}">Exercida</button>
+            <button class="btn secondary text-xs" data-acao="vendida"  data-tk="${a.ticker}">Vendida</button>
+          </td>
         </tr>
       `).join('');
+
+      // handlers dos botões
+      qsa('#tbCarteira [data-acao]').forEach(b=>{
+        b.addEventListener('click', async e=>{
+          const ticker = e.currentTarget.dataset.tk;
+          const tipo   = e.currentTarget.dataset.acao; // exercida | vendida
+          const hoje   = new Date().toISOString().substring(0,10);
+
+          const qtde = Math.trunc(toNum(prompt(`Qtde ${tipo==='exercida'?'exercida':'vendida'} de ${ticker}:`)||0));
+          if(!qtde || qtde<=0){ alert('Informe uma quantidade válida.'); return; }
+
+          const preco = toNum(prompt(`Preço ${tipo==='exercida'?'de execução (R$)':'de venda (R$)'}:`) || 0);
+          if(!preco || preco<=0){ alert('Informe um preço válido.'); return; }
+
+          const taxas = toNum(prompt('Taxas (R$) – opcional:', '0') || 0);
+
+          // Lançamos uma “saída” (qtde negativa) no mesmo endpoint de compras
+          await apiPost({ action:'compras/create', data: hoje, ticker, qtde: -qtde, preco });
+
+          // Credita no caixa
+          const credito = (qtde * preco) - taxas;
+          const novoSaldo = toNum(localStorage.getItem('saldo_caixa_bolsa')||0) + credito;
+          localStorage.setItem('saldo_caixa_bolsa', String(novoSaldo));
+
+          await reloadAll();
+          alert(`${tipo==='exercida'?'Execução':'Venda'} registrada! Caixa +${money(credito)}.`);
+        });
+      });
     }
 
-    // ===== Opções – render
+    // ===== Opções – render (sem alterações)
     function renderOpcoes(opcoes){
       const tb = qs('#tbOpcoes');
       if(!opcoes || !opcoes.length){ tb.innerHTML = `<tr><td colspan="9" class="text-slate-500 text-sm">Sem dados.</td></tr>`; return; }
       const todayKey = (new Date()).toISOString().substring(0,10);
       tb.innerHTML = opcoes.map(o=>{
         const vencISO = String(o.vencimento||'').substring(0,10);
-        const mostrarAcoes = (String(o.status||'').toLowerCase()==='aberta') && vencISO && vencISO<=todayKey;
+        const mostrarAcoes = (o.status||'')==='Aberta' && vencISO && vencISO<=todayKey;
         const acoes = mostrarAcoes ? `
            <button class="btn secondary text-xs" data-act="fechar" data-cod="${o.codigo}">Fechar</button>
            <button class="btn secondary text-xs" data-act="exercida" data-cod="${o.codigo}">Exercida</button>
@@ -622,11 +621,6 @@
         b.addEventListener('click', async e=>{
           const cod = e.currentTarget.dataset.cod;
           const act = e.currentTarget.dataset.act;
-          const opt = (DATA.opcoes||[]).find(o => String(o.codigo||'').toUpperCase()===String(cod||'').toUpperCase());
-          const qtdeOp = toNum(opt?.qtde);
-          const strike = toNum(opt?.strike);
-          const subj   = String(opt?.subjacente||'').toUpperCase();
-
           let status_final='Encerrada', resultado=0, preco_acao=0, custo_fechar=0, taxas=0;
           if(act==='fechar'){
             preco_acao = toNum(prompt('Preço da ação para fechamento (R$):')||0);
@@ -635,16 +629,10 @@
             resultado = toNum(prompt('Resultado líquido (R$):')||0);
             status_final = 'Encerrada';
           }else if(act==='exercida'){
-            // Execução: ações saem a STRIKE e o caixa recebe STRIKE*QTDE - taxas
-            const precoInformado = toNum(prompt(`Preço de exercício (default = strike ${money(strike)}):`)||0);
-            const exec = precoInformado>0 ? precoInformado : strike;
+            preco_acao = toNum(prompt('Preço da ação no vencimento (R$):')||0);
             taxas = toNum(prompt('Taxas (R$):')||0);
-            resultado = toNum(prompt('Resultado líquido (R$) (apenas para controle de performance):')||0);
+            resultado = toNum(prompt('Resultado líquido após execução (R$):')||0);
             status_final = 'Exercida';
-            // Crédito automático no caixa
-            const credit = Math.max(0, (exec * qtdeOp) - taxas);
-            setCash(getCash() + credit);
-            alert(`Caixa creditado em ${money(credit)} (ticker ${subj}).`);
           }else{
             taxas = toNum(prompt('Taxas (R$):')||0);
             resultado = toNum(prompt('Resultado líquido (R$):')||0);
@@ -756,6 +744,7 @@
 
     // Projeção — gráficos completos da aba
     function drawProjCharts(){
+      // lê valores
       const usarPat = qs('#usePatAtual').checked;
       const inicial = usarPat ? currentPatrimonio() : toNum(qs('#pjInicial').value);
       const taxaPct = toNum(qs('#pjTaxa').value);
@@ -794,7 +783,8 @@
         options:{ responsive:true, plugins:{ legend:{ display:true }}}
       });
 
-      qs('#projFinalInfo').textContent = `Final: ${money(capital)} • Invest.: ${money(totalInvestido)} • Juros: ${money(Math.max(0, capital-totalInvestido))}`;
+      qs('#projFinalInfo').textContent =
+        `Final: ${money(capital)} • Invest.: ${money(totalInvestido)} • Juros: ${money(Math.max(0, capital-totalInvestido))}`;
     }
     ['#pjInicial','#pjTaxa','#pjAporte','#pjMeses','#usePatAtual'].forEach(sel=>{
       qs(sel).addEventListener('input', drawProjCharts);
@@ -861,7 +851,6 @@
       renderCarteira(carteira);
       renderCash();
       renderOptMtm();
-      renderQuotes();
     }
 
     // ===== IR (DARF)
@@ -919,7 +908,12 @@
     });
 
     qs('#btnIrCopiar').addEventListener('click', async ()=>{
-      const texto = `CPF: ${qs('#irCpf').value}\nNome: ${qs('#irNome').value}\nNascimento: ${qs('#irNasc').value}\nReceita: 6015 - IRPF - Ganhos Líquidos em Operações em Bolsa\nPeríodo de apuração: ${qs('#irPeriodo').value}\nValor principal (R$): ${qs('#irPrincipal').value}`;
+      const texto = `CPF: ${qs('#irCpf').value}
+Nome: ${qs('#irNome').value}
+Nascimento: ${qs('#irNasc').value}
+Receita: 6015 - IRPF - Ganhos Líquidos em Operações em Bolsa
+Período de apuração: ${qs('#irPeriodo').value}
+Valor principal (R$): ${qs('#irPrincipal').value}`;
       try { await navigator.clipboard.writeText(texto); alert('Dados copiados! Agora cole no Sicalc.'); }
       catch(e){ alert('Não foi possível copiar automaticamente. Selecione e copie manualmente:\n\n'+texto); }
     });
